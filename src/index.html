@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="zh-CN"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -42,6 +41,57 @@
             }
         }
     </script>
+    
+    <!-- Custom Styles -->
+    <style>
+        /* 确保样式优先级 */
+        .delete-cooldown {
+            position: relative !important;
+            opacity: 0.6 !important;
+            pointer-events: none !important;
+            filter: grayscale(50%) !important;
+        }
+        
+        .delete-cooldown::after {
+            content: '' !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent) !important;
+            animation: cooldown-animation 1s linear infinite !important;
+            z-index: 10 !important;
+        }
+        
+        /* 倒计时文本样式 */
+        .cooldown-countdown {
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            color: #ef4444 !important;
+            font-weight: bold !important;
+            font-size: 12px !important;
+            z-index: 20 !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            padding: 2px 6px !important;
+            border-radius: 4px !important;
+            min-width: 20px !important;
+            text-align: center !important;
+        }
+        
+        /* 为按钮内的图标添加样式 */
+        .delete-cooldown i {
+            position: relative !important;
+            z-index: 5 !important;
+        }
+        
+        @keyframes cooldown-animation {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+    </style>
 
     <!-- Import SKU Costs Modal -->
     </head><body class="bg-gray-50 min-h-screen"><div id="import-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
@@ -324,16 +374,22 @@
                 @apply px-2 py-1 text-xs font-medium rounded-full;
             }
             .badge-success {
-                @apply bg-success/20 text-success;
+                @apply bg-green-100 text-green-800 border border-green-200;
             }
             .badge-warning {
-                @apply bg-warning/20 text-warning;
+                @apply bg-orange-100 text-orange-800 border border-orange-200;
             }
             .badge-danger {
-                @apply bg-danger/20 text-danger;
+                @apply bg-red-100 text-red-800 border border-red-200;
             }
             .badge-shop {
                 @apply bg-primary/20 text-primary border border-primary/30;
+            }
+            .badge-info {
+                @apply bg-blue-100 text-blue-800 border border-blue-200;
+            }
+            .badge-gray {
+                @apply bg-gray-100 text-gray-800 border border-gray-200;
             }
             /* 自定义提示框样式 */
             .tooltip-container {
@@ -500,6 +556,9 @@
                     </li>
                     <li>
                         <button class="tab px-6 py-3 text-lg font-bold text-gray-700 transition-all duration-300 hover:bg-white/50 hover:text-primary rounded-lg" data-tab="pricing-tool" style="font-size: 20px; font-weight: bold;">新品定价工具</button>
+                    </li>
+                    <li>
+                        <button class="tab px-6 py-3 text-lg font-bold text-gray-700 transition-all duration-300 hover:bg-white/50 hover:text-primary rounded-lg" data-tab="purchase-management" style="font-size: 20px; font-weight: bold;">采购管理</button>
                     </li>
                 </ul>
             </div>
@@ -7633,7 +7692,533 @@ ${shopsMap[link.shopId]}
                 </div>
             </div>
         </div>
-    </main>
+        <!-- 采购管理 -->
+        <div id="purchase-management" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-100 mb-6 overflow-hidden">
+                <div class="flex p-1">
+                    <button class="purchase-tab flex-1 py-3 px-4 text-center rounded-md transition-all duration-300 font-bold text-lg bg-blue-50 text-primary" data-purchase-tab="purchase-registration">
+                        <span class="relative inline-block" style="font-size: 24px;">
+                            采购登记
+                        </span>
+                    </button>
+                    <button class="purchase-tab flex-1 py-3 px-4 text-center rounded-md transition-all duration-300 font-bold text-lg text-gray-600 hover:text-gray-800 hover:bg-gray-50" data-purchase-tab="purchase-query" style="font-size: 24px;">
+                        数据查询
+                    </button>
+                    <button class="purchase-tab flex-1 py-3 px-4 text-center rounded-md transition-all duration-300 font-bold text-lg text-gray-600 hover:text-gray-800 hover:bg-gray-50" data-purchase-tab="payment-records" style="font-size: 24px;">
+                        付款记录
+                    </button>
+                </div>
+            </div>
+
+            <!-- 采购登记 -->
+            <div id="purchase-registration" class="purchase-tab-content">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- 左侧：新增采购登记区 -->
+                    <div class="card lg:col-span-1">
+                        <h3 class="text-xl font-bold mb-6 text-gray-800">新增采购登记</h3>
+                        <form id="purchase-form" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">选择产品</label>
+                                <div class="relative">
+                                    <select id="purchase-product" class="w-full px-4 py-2 pr-8 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 appearance-none bg-white text-gray-700 cursor-pointer">
+                                        <option value="">请选择产品</option>
+                                    </select>
+                                    <i class="fa fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">采购数量</label>
+                                <input type="number" id="purchase-quantity" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400" placeholder="请输入采购数量" min="1">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">采购单价</label>
+                                <input type="number" id="purchase-unit-price" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400 bg-gray-50" placeholder="自动获取产品成本" readonly="">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">采购总价</label>
+                                <input type="number" id="purchase-total-price" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400 bg-gray-50" placeholder="自动计算" readonly="">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">已付金额</label>
+                                <input type="number" id="purchase-paid-amount" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400" placeholder="请输入已付金额" min="0">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">采购日期</label>
+                                <input type="datetime-local" id="purchase-date" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400" value="">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">选择供应商</label>
+                                <div class="flex items-center space-x-2">
+                                    <div class="relative flex-grow">
+                                        <select id="purchase-supplier" class="w-full px-4 py-2 pr-8 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 appearance-none bg-white text-gray-700 cursor-pointer">
+                                            <option value="">请选择供应商</option>
+                                        </select>
+                                        <i class="fa fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                                    </div>
+                                    <button type="button" id="manage-suppliers-btn" class="w-10 h-10 flex items-center justify-center rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-200 text-gray-600 shadow-sm hover:from-gray-200 hover:to-gray-300 hover:shadow-md transition-all duration-200" title="供应商管理">
+                                        <i class="fa fa-cog"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">备注</label>
+                                <textarea id="purchase-note" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400" placeholder="请输入备注信息" rows="3"></textarea>
+                            </div>
+                            <button type="button" id="save-purchase-btn" class="btn btn-primary w-full mt-4">保存记录</button>
+                        </form>
+                    </div>
+
+                    <!-- 右侧：采购记录展示区 -->
+                    <div class="card lg:col-span-2">
+                        <h3 class="text-xl font-bold mb-6 text-gray-800">采购记录</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">产品名称</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">数量</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">单位</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">单价 (¥)</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">总价 (¥)</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">供应商</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">采购日期</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="purchase-records-list" class="bg-white divide-y divide-gray-200">
+                                    <!-- 采购记录将通过JavaScript动态添加 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="no-purchase-records" class="text-center py-8 text-gray-500">
+                            暂无采购记录
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 付款记录 -->
+            <div id="payment-records" class="purchase-tab-content hidden">
+                <!-- 顶部数据概览区 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="card bg-gradient-to-r from-purple-50 to-purple-100">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">付款笔数</p>
+                                <p id="payment-count" class="text-3xl font-bold text-gray-800">0</p>
+                            </div>
+                            <div class="p-3 bg-purple-200 rounded-full">
+                                <i class="fa fa-list-alt text-purple-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">近一个月的数据，筛选后展示更多</p>
+                    </div>
+                    <div class="card bg-gradient-to-r from-green-50 to-green-100">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">付款金额</p>
+                                <p id="payment-amount" class="text-3xl font-bold text-gray-800">¥0.00</p>
+                            </div>
+                            <div class="p-3 bg-green-200 rounded-full">
+                                <i class="fa fa-money text-green-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">近一个月的数据，筛选后展示更多</p>
+                    </div>
+                    <div class="card bg-gradient-to-r from-red-50 to-red-100">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">退款金额</p>
+                                <p id="refund-amount" class="text-3xl font-bold text-red-600">¥0.00</p>
+                            </div>
+                            <div class="p-3 bg-red-200 rounded-full">
+                                <i class="fa fa-refresh text-red-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">近一个月的数据，筛选后展示更多</p>
+                    </div>
+                </div>
+
+                <!-- 中部查询筛选区 -->
+                <div class="card mb-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xl font-bold text-gray-800">查询筛选</h3>
+                    </div>
+                    <form id="payment-filter-form" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">产品名称</label>
+                            <div class="relative">
+                                <select id="filter-payment-product" class="w-full px-4 py-2 pr-8 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 appearance-none bg-white text-gray-700 cursor-pointer">
+                                    <option value="">全部产品</option>
+                                </select>
+                                <i class="fa fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">供应商</label>
+                            <div class="relative">
+                                <select id="filter-payment-supplier" class="w-full px-4 py-2 pr-8 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 appearance-none bg-white text-gray-700 cursor-pointer">
+                                    <option value="">全部供应商</option>
+                                </select>
+                                <i class="fa fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">付款类型</label>
+                            <div class="relative">
+                                <select id="filter-payment-type" class="w-full px-4 py-2 pr-8 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 appearance-none bg-white text-gray-700 cursor-pointer">
+                                    <option value="">全部类型</option>
+                                    <option value="登记付款">登记付款</option>
+                                    <option value="批量付款">批量付款</option>
+                                    <option value="编辑付款">编辑付款</option>
+                                    <option value="退款">退款</option>
+                                </select>
+                                <i class="fa fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">编码输入（支持多个，用逗号或空格分隔）</label>
+                            <input type="text" id="filter-payment-code" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400" placeholder="请输入编码">
+                        </div>
+                    </form>
+                    <form id="payment-amount-filter-form" class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                        <div class="md:col-span-2 grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">最小金额</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">¥</span>
+                                    <input type="number" id="filter-payment-min-amount" class="w-full pl-8 pr-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400" placeholder="最小金额" min="0" step="0.01">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">最大金额</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">¥</span>
+                                    <input type="number" id="filter-payment-max-amount" class="w-full pl-8 pr-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400" placeholder="最大金额" min="0" step="0.01">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="md:col-span-2 grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">开始日期</label>
+                                <input type="date" id="filter-payment-start-date" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">结束日期</label>
+                                <input type="date" id="filter-payment-end-date" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400">
+                            </div>
+                        </div>
+                    </form>
+                    <form id="payment-date-filter-form" class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                        <div class="md:col-span-4 flex justify-end space-x-2">
+                            <button type="button" id="reset-payment-filter-btn" class="btn btn-sm btn-secondary">重置</button>
+                            <button type="button" id="search-payment-filter-btn" class="btn btn-sm btn-primary">查询</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 底部付款记录列表 -->
+                <div class="card">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-gray-800">付款记录列表</h3>
+                    </div>
+                    <div id="payment-records-list" class="space-y-4">
+                        <!-- 付款记录卡片将通过JavaScript动态添加 -->
+                    </div>
+                    <div id="no-payment-records" class="text-center py-8 text-gray-500">
+                        暂无付款记录
+                    </div>
+                </div>
+
+                <!-- 编辑付款记录备注模态框 -->
+                <div id="edit-payment-note-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800">编辑备注</h3>
+                            <button onclick="closePaymentNoteModal()" class="text-gray-400 hover:text-gray-600">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">备注内容</label>
+                            <textarea id="payment-note-input" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" rows="4" placeholder="请输入备注内容..."></textarea>
+                        </div>
+                        <div class="flex justify-end space-x-3">
+                            <button onclick="closePaymentNoteModal()" class="btn btn-secondary">取消</button>
+                            <button onclick="savePaymentNote()" class="btn btn-primary">保存</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 删除付款记录确认模态框 -->
+                <div id="delete-payment-confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                        <div class="text-center mb-4">
+                            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-500 mb-4">
+                                <i class="fa fa-exclamation-triangle text-2xl"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-2">确认删除</h3>
+                            <p class="text-gray-600">您确定要删除这条付款记录吗？此操作无法撤销。</p>
+                        </div>
+                        <div class="flex justify-center space-x-3">
+                            <button onclick="cancelDeletePayment()" class="btn btn-secondary">取消</button>
+                            <button onclick="confirmDeletePayment()" class="btn btn-danger">确认删除</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据查询 -->
+            <div id="purchase-query" class="purchase-tab-content hidden">
+                <!-- 顶部数据概览区 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="card bg-gradient-to-r from-blue-50 to-blue-100">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">采购种类</p>
+                                <p id="purchase-category-count" class="text-3xl font-bold text-gray-800">0</p>
+                            </div>
+                            <div class="p-3 bg-blue-200 rounded-full">
+                                <i class="fa fa-cubes text-blue-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">近一个月数据</p>
+                    </div>
+                    <div class="card bg-gradient-to-r from-green-50 to-green-100">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">采购金额</p>
+                                <p id="purchase-amount" class="text-3xl font-bold text-gray-800">¥0.00</p>
+                            </div>
+                            <div class="p-3 bg-green-200 rounded-full">
+                                <i class="fa fa-money text-green-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">近一个月数据</p>
+                    </div>
+                    <div class="card bg-gradient-to-r from-yellow-50 to-yellow-100">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">未付金额</p>
+                                <p id="unpaid-amount" class="text-3xl font-bold text-gray-800">¥0.00</p>
+                            </div>
+                            <div class="p-3 bg-yellow-200 rounded-full">
+                                <i class="fa fa-credit-card text-yellow-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-center mt-2">
+                            <p class="text-xs text-gray-500">所有未付金额</p>
+                            <button id="toggle-unpaid-visibility" class="ml-2 text-gray-400 hover:text-primary">
+                                <i class="fa fa-eye-slash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 中部查询筛选区 -->
+                <div class="card mb-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xl font-bold text-gray-800">查询筛选</h3>
+                        <button type="button" id="export-excel-btn" class="btn btn-success">导出Excel</button>
+                    </div>
+                    <form id="purchase-filter-form" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">筛选产品</label>
+                            <div class="relative">
+                                <select id="filter-product" class="w-full px-4 py-2 pr-8 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 appearance-none bg-white text-gray-700 cursor-pointer">
+                                    <option value="">全部产品</option>
+                                </select>
+                                <i class="fa fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">筛选供应商</label>
+                            <div class="relative">
+                                <select id="filter-supplier" class="w-full px-4 py-2 pr-8 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 appearance-none bg-white text-gray-700 cursor-pointer">
+                                    <option value="">全部供应商</option>
+                                </select>
+                                <i class="fa fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">待付金额</label>
+                            <div class="relative">
+                                <select id="filter-payment-status" class="w-full px-4 py-2 pr-8 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 appearance-none bg-white text-gray-700 cursor-pointer">
+                                    <option value="">全部</option>
+                                    <option value="unpaid">未付</option>
+                                    <option value="partial">部分支付</option>
+                                    <option value="paid">已付清</option>
+                                </select>
+                                <i class="fa fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">输入编码（支持多个，用逗号或空格分隔）</label>
+                            <input type="text" id="filter-search" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400" placeholder="请输入编码">
+                        </div>
+                    </form>
+                    <form id="purchase-date-filter-form" class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                        <div class="md:col-span-2 grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">开始日期</label>
+                                <input type="date" id="filter-start-date" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">结束日期</label>
+                                <input type="date" id="filter-end-date" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400">
+                            </div>
+                        </div>
+                        <div class="md:col-span-2 flex justify-end space-x-3 mt-2">
+                            <button type="button" id="reset-filter-btn" class="btn btn-secondary">重置</button>
+                            <button type="button" id="search-filter-btn" class="btn btn-primary">查询</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 底部采购数据列表 -->
+                <div class="card">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-gray-800">采购数据列表</h3>
+                        <div class="flex items-center space-x-4">
+                            <div id="batch-actions" class="hidden">
+                                <button onclick="batchDeletePurchases()" class="btn btn-danger btn-sm">
+                                    <i class="fa fa-trash mr-1"></i> 批量删除
+                                </button>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">¥</span>
+                                    <input type="number" id="batch-payment-amount" class="input-field w-36 pl-16 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300" step="0.01" min="0" placeholder="付款金额" style="padding-left: 2rem !important;">
+                                </div>
+                                <button onclick="showBatchPaymentConfirm()" class="btn btn-success btn-sm" title="批量付款">
+                                    <i class="fa fa-credit-card mr-1"></i> 批量付款
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <input type="checkbox" id="select-all-purchases" onclick="toggleSelectAllPurchases()">
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">产品名称</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">数量</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">单位</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">单价 (¥)</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">总价 (¥)</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">待付金额</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">供应商</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">采购日期</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">编码</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="purchase-data-list" class="bg-white divide-y divide-gray-200">
+                                <!-- 采购数据将通过JavaScript动态添加 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 数据统计 -->
+                    <div class="flex justify-between items-center px-4 py-3 bg-gray-50 border-t border-gray-200">
+                        <div class="text-sm text-gray-600">
+                            共 <span id="purchase-data-count" class="font-semibold text-gray-800">0</span> 条数据
+                        </div>
+                    </div>
+                    
+                    <div id="no-purchase-data" class="text-center py-8 text-gray-500 hidden">
+                        暂无采购数据
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 删除确认模态框 -->
+
+        <!-- 供应商管理模态框 -->
+        <div id="supplier-management-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">供应商管理</h3>
+                        <button id="close-supplier-modal" class="text-gray-400 hover:text-gray-600">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <div class="flex space-x-2">
+                            <input type="text" id="new-supplier-name" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400 flex-1" placeholder="输入新供应商名称">
+                            <input type="text" id="new-supplier-contact" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400 flex-1" placeholder="输入联系人">
+                            <button id="add-supplier-btn" class="btn btn-primary whitespace-nowrap">
+                                <i class="fa fa-plus"></i> 添加
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="suppliers-list" class="max-h-60 overflow-y-auto">
+                        <!-- 供应商列表将通过JavaScript动态添加 -->
+                    </div>
+                    
+                    <div class="flex justify-end mt-4">
+                        <button id="close-supplier-btn" class="btn btn-secondary">关闭</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 编辑采购记录模态框 -->
+        <div id="edit-purchase-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">编辑采购记录</h3>
+                        <button id="close-edit-purchase-modal" class="text-gray-400 hover:text-gray-600">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <form id="edit-purchase-form" class="space-y-4">
+                        <input type="hidden" id="edit-purchase-id">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">产品</label>
+                            <input type="text" id="edit-purchase-product" class="input-field w-full" readonly="">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">供应商</label>
+                            <select id="edit-purchase-supplier" class="input-field w-full">
+                                <option value="">请选择供应商</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">采购日期时间</label>
+                            <input type="datetime-local" id="edit-purchase-date" class="input-field w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">采购数量</label>
+                            <input type="number" id="edit-purchase-quantity" class="input-field w-full" min="1">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">采购单价</label>
+                            <input type="number" id="edit-purchase-unit-price" class="input-field w-full" step="0.01" onblur="if(this.value) this.value = parseFloat(this.value).toFixed(2)" readonly="">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">已付金额</label>
+                            <input type="number" id="edit-purchase-paid-amount" class="input-field w-full" min="0" step="0.01" onblur="if(this.value) this.value = parseFloat(this.value).toFixed(2)">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">备注</label>
+                            <textarea id="edit-purchase-note" class="input-field w-full" rows="3" placeholder="请输入备注信息"></textarea>
+                        </div>
+                        <div class="flex justify-end space-x-3 mt-6">
+                            <button type="button" id="cancel-edit-purchase-btn" class="btn btn-secondary">取消</button>
+                            <button type="button" id="save-edit-purchase-btn" class="btn btn-primary">保存</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
 
     <!-- Edit Spec Note Modal -->
     <div id="edit-spec-note-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -7885,6 +8470,8 @@ ${shopsMap[link.shopId]}
                         <option value="单">单</option>
                         <option value="份">份</option>
                         <option value="批">批</option>
+                        <option value="项">项</option>
+                        <option value="组">组</option>
                         <option value="卡">卡</option>
                         <option value="片">片</option>
                         <option value="斤">斤</option>
@@ -8013,6 +8600,37 @@ ${shopsMap[link.shopId]}
                 </button>
                 <button id="delete-confirm-btn" class="btn btn-danger px-6 py-2">
                     确认删除
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量付款确认模态框 -->
+    <div id="batch-payment-confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" style="z-index: 1001;">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-500 mb-4">
+                    <i class="fa fa-credit-card text-2xl"></i>
+                </div>
+                <h3 id="payment-modal-title" class="text-xl font-semibold text-gray-800 mb-2">确认批量付款</h3>
+                <p id="payment-modal-message" class="text-gray-600 mb-4">您确定要执行批量付款操作吗？</p>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-gray-600">付款金额：</span>
+                        <span id="payment-amount-display" class="font-semibold text-green-600">¥0.00</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">预计应用到：</span>
+                        <span id="payment-count-display" class="font-semibold text-blue-600">0 条记录</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-center space-x-4">
+                <button id="payment-cancel-btn" class="btn btn-secondary px-6 py-2">
+                    取消
+                </button>
+                <button id="payment-confirm-btn" class="btn btn-success px-6 py-2">
+                    确认付款
                 </button>
             </div>
         </div>
@@ -11126,45 +11744,55 @@ ${shopsMap[link.shopId]}
                             return;
                         }
                         
-                        // 设置冷却状态
-                        isOnCooldown = true;
-                        const originalText = button.innerHTML;
-                        let countdown = 3;
-                        
-                        // 更新按钮显示
-                        button.innerHTML = `<i class="fa fa-clock-o"></i> ${countdown}s`;
-                        button.classList.add('text-gray-400', 'cursor-not-allowed');
+                        // 添加冷却样式
+                        button.classList.add('delete-cooldown');
                         button.disabled = true;
                         
+                        // 创建倒计时元素
+                        const countdownEl = document.createElement('span');
+                        countdownEl.className = 'cooldown-countdown';
+                        countdownEl.textContent = '3';
+                        button.appendChild(countdownEl);
+                        
                         // 倒计时
+                        let countdown = 3;
                         const timer = setInterval(() => {
                             countdown--;
                             if (countdown > 0) {
-                                button.innerHTML = `<i class="fa fa-clock-o"></i> ${countdown}s`;
+                                countdownEl.textContent = countdown;
                             } else {
                                 clearInterval(timer);
-                                
-                                // 显示删除确认模态框
-                                openDeleteConfirmModal(
-                                    '确认删除',
-                                    `确定要删除规格 ${skuCode} 的成本记录吗？此操作无法撤销。`,
-                                    function() {
-                                        delete skuCosts[skuCode];
-                                        
-                                        saveData();
-                                        renderSkuCosts();
-                                        
-                                        showToast('成功', '规格成本已删除', 'success');
-                                    }
-                                );
-                                
-                                // 恢复按钮状态
-                                button.innerHTML = originalText;
-                                button.classList.remove('text-gray-400', 'cursor-not-allowed');
-                                button.disabled = false;
-                                isOnCooldown = false;
+                                button.removeChild(countdownEl);
                             }
                         }, 1000);
+                        
+                        // 设置冷却状态
+                        isOnCooldown = true;
+                        
+                        // 显示提示
+                        showToast('提示', '请等待3秒后确认删除...', 'info');
+                        
+                        // 3秒后显示确认删除模态框
+                        setTimeout(() => {
+                            // 显示删除确认模态框
+                            openDeleteConfirmModal(
+                                '确认删除',
+                                `确定要删除规格 ${skuCode} 的成本记录吗？此操作无法撤销。`,
+                                function() {
+                                    delete skuCosts[skuCode];
+                                    
+                                    saveData();
+                                    renderSkuCosts();
+                                    
+                                    showToast('成功', '规格成本已删除', 'success');
+                                }
+                            );
+                            
+                            // 移除冷却样式
+                            button.classList.remove('delete-cooldown');
+                            button.disabled = false;
+                            isOnCooldown = false;
+                        }, 3000);
                     };
                 })(btn);
             });
@@ -11936,7 +12564,15 @@ ${shopsMap[link.shopId]}
                 // 找到原始数组中的索引
                 const originalIndex = costItems.indexOf(item);
                 
-                // 根据成本类型选择图标和颜色
+                // 获取单位信息
+                let unit = item.unit;
+                if (!unit) {
+                    // 如果项目本身没有单位，尝试从其他地方获取
+                    // 这里可以根据需要添加更复杂的单位获取逻辑
+                }
+                
+                // 格式化产品名称，有单位时显示为"名称/单位"
+                const displayName = unit ? `${item.name} / ${unit}` : item.name;
                 let icon = 'fa-circle';
                 let bgColor = 'bg-blue-50';
                 let textColor = 'text-blue-600';
@@ -11974,7 +12610,7 @@ ${shopsMap[link.shopId]}
                                     </div>
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center">
-                                            <h4 class="font-semibold text-gray-800 text-lg leading-tight">${item.name}</h4>
+                                            <h4 class="font-semibold text-gray-800 text-lg leading-tight">${displayName}</h4>
                                         </div>
                                         ${item.note ? `
                                         <div class="relative mt-1">
@@ -17047,4 +17683,2543 @@ ${shopsMap[link.shopId]}
         });
     </script>
 
-</body></html>
+    <script>
+        // 采购管理相关数据
+        let purchaseData = {
+            purchases: [],
+            suppliers: [],
+            paymentRecords: []
+        };
+
+        // 加载采购数据
+        function loadPurchaseData() {
+            const saved = localStorage.getItem('purchaseData');
+            if (saved) {
+                purchaseData = JSON.parse(saved);
+                // 确保所有采购记录都有note属性
+                purchaseData.purchases = purchaseData.purchases.map(purchase => ({
+                    ...purchase,
+                    note: purchase.note || ''
+                }));
+            }
+        }
+
+        // 保存采购数据
+        function savePurchaseData() {
+            // 深拷贝数据以避免任何引用问题
+            const dataToSave = JSON.parse(JSON.stringify(purchaseData));
+            console.log('=== 保存到localStorage的数据 ===', JSON.stringify(dataToSave.purchases.map(p => ({id: p.id, note: p.note}))));
+            localStorage.setItem('purchaseData', JSON.stringify(dataToSave));
+        }
+
+        // 初始化采购管理
+        function initPurchaseManagement() {
+            console.log('=== 初始化采购管理 ===');
+            loadPurchaseData();
+            ensureAllPurchasesHaveCodes();
+            updateProductSelects();
+            updateSupplierSelects();
+            renderPurchaseRecords();
+            renderPurchaseData();
+            updateStatistics();
+            initPaymentRecords();
+        }
+
+        // 初始化付款记录
+        function initPaymentRecords() {
+            console.log('=== 初始化付款记录 ===');
+            updatePaymentProductSelects();
+            updatePaymentSupplierSelects();
+            
+            // 添加一些模拟数据用于测试
+            if (!purchaseData.paymentRecords || purchaseData.paymentRecords.length === 0) {
+                addMockPaymentRecords();
+            }
+            
+            renderPaymentRecords();
+            updatePaymentStatistics();
+            addPaymentRecordEventListeners();
+        }
+
+        // 添加模拟付款记录数据
+        function addMockPaymentRecords() {
+            const mockRecords = [
+                {
+                    id: 'mock1',
+                    type: '登记付款',
+                    purchaseId: 'mock-purchase-1',
+                    product: '水写布',
+                    supplier: '文房四宝供应商',
+                    amount: 150.00,
+                    date: '2024-01-15',
+                    createdAt: '2024-01-15T10:30:00.000Z',
+                    details: [
+                        {
+                            id: 'mock-purchase-1',
+                            code: 'P20240115001',
+                            product: '水写布',
+                            supplier: '文房四宝供应商',
+                            quantity: 10,
+                            unitPrice: 15.00,
+                            totalPrice: 150.00,
+                            paidAmount: 150.00
+                        }
+                    ]
+                },
+                {
+                    id: 'mock2',
+                    type: '批量付款',
+                    amount: 800.00,
+                    date: '2024-01-20',
+                    createdAt: '2024-01-20T14:20:00.000Z',
+                    details: [
+                        {
+                            id: 'mock-purchase-2',
+                            code: 'P20240118001',
+                            product: '宣纸',
+                            supplier: '文房四宝供应商',
+                            quantity: 50,
+                            unitPrice: 8.00,
+                            totalPrice: 400.00,
+                            paidAmount: 400.00
+                        },
+                        {
+                            id: 'mock-purchase-3',
+                            code: 'P20240119001',
+                            product: '毛笔',
+                            supplier: '文房四宝供应商',
+                            quantity: 20,
+                            unitPrice: 20.00,
+                            totalPrice: 400.00,
+                            paidAmount: 400.00
+                        }
+                    ]
+                },
+                {
+                    id: 'mock3',
+                    type: '编辑付款',
+                    purchaseId: 'mock-purchase-4',
+                    product: '墨汁',
+                    supplier: '文房四宝供应商',
+                    amount: 120.00,
+                    date: '2024-01-25',
+                    createdAt: '2024-01-25T09:15:00.000Z',
+                    details: [
+                        {
+                            id: 'mock-purchase-4',
+                            code: 'P20240122001',
+                            product: '墨汁',
+                            supplier: '文房四宝供应商',
+                            quantity: 12,
+                            unitPrice: 25.00,
+                            totalPrice: 300.00,
+                            paidAmount: 120.00
+                        }
+                    ]
+                }
+            ];
+            
+            purchaseData.paymentRecords = mockRecords;
+            savePurchaseData();
+        }
+
+        // 获取付款类型对应的徽章样式
+        function getPaymentTypeBadgeClass(type) {
+            switch (type) {
+                case '登记付款':
+                    return 'badge-success';
+                case '批量付款':
+                    return 'badge-warning';
+                case '编辑付款':
+                    return 'badge-info';
+                default:
+                    return 'badge-gray';
+            }
+        }
+
+        // 更新付款统计信息
+        function updatePaymentStatistics(records = null) {
+            const paymentCountElement = document.getElementById('payment-count');
+            const paymentAmountElement = document.getElementById('payment-amount');
+            const refundAmountElement = document.getElementById('refund-amount');
+            
+            if (!paymentCountElement || !paymentAmountElement || !refundAmountElement) return;
+            
+            // 如果没有传入records，默认显示近一个月的数据
+            let filteredRecords = records;
+            if (records === null) {
+                if (!purchaseData.paymentRecords || purchaseData.paymentRecords.length === 0) {
+                    filteredRecords = [];
+                } else {
+                    // 计算一个月前的日期
+                    const oneMonthAgo = new Date();
+                    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+                    
+                    // 过滤出近一个月的记录
+                    filteredRecords = purchaseData.paymentRecords.filter(record => {
+                        const recordDate = new Date(record.createdAt);
+                        return recordDate >= oneMonthAgo;
+                    });
+                }
+            }
+            
+            if (!filteredRecords || filteredRecords.length === 0) {
+                paymentCountElement.textContent = '0';
+                paymentAmountElement.textContent = '¥0.00';
+                refundAmountElement.textContent = '¥0.00';
+                return;
+            }
+            
+            // 计算总笔数和总金额（不包含退款）
+            const nonRefundRecords = filteredRecords.filter(record => record.type !== '退款');
+            const totalCount = nonRefundRecords.length;
+            const totalAmount = nonRefundRecords.reduce((sum, record) => {
+                return sum + parseFloat(record.amount || 0);
+            }, 0);
+            
+            // 计算退款金额
+            const refundRecords = filteredRecords.filter(record => record.type === '退款');
+            const totalRefundAmount = refundRecords.reduce((sum, record) => {
+                return sum + parseFloat(record.amount || 0);
+            }, 0);
+            
+            paymentCountElement.textContent = totalCount.toString();
+            paymentAmountElement.textContent = `¥${totalAmount.toFixed(2)}`;
+            refundAmountElement.textContent = `¥${totalRefundAmount.toFixed(2)}`;
+        }
+
+        // 添加付款记录事件监听器
+        function addPaymentRecordEventListeners() {
+            const searchBtn = document.getElementById('search-payment-filter-btn');
+            const resetBtn = document.getElementById('reset-payment-filter-btn');
+            
+            if (searchBtn) {
+                searchBtn.addEventListener('click', searchPaymentRecords);
+            }
+            
+            if (resetBtn) {
+                resetBtn.addEventListener('click', resetPaymentFilters);
+            }
+        }
+
+        // 搜索付款记录
+        function searchPaymentRecords() {
+            const filters = {
+                product: document.getElementById('filter-payment-product').value,
+                supplier: document.getElementById('filter-payment-supplier').value,
+                type: document.getElementById('filter-payment-type').value,
+                code: document.getElementById('filter-payment-code').value,
+                minAmount: document.getElementById('filter-payment-min-amount').value,
+                maxAmount: document.getElementById('filter-payment-max-amount').value,
+                startDate: document.getElementById('filter-payment-start-date').value,
+                endDate: document.getElementById('filter-payment-end-date').value
+            };
+            
+            renderPaymentRecords(filters);
+        }
+
+        // 重置付款记录筛选条件
+        function resetPaymentFilters() {
+            document.getElementById('filter-payment-product').value = '';
+            document.getElementById('filter-payment-supplier').value = '';
+            document.getElementById('filter-payment-type').value = '';
+            document.getElementById('filter-payment-code').value = '';
+            document.getElementById('filter-payment-min-amount').value = '';
+            document.getElementById('filter-payment-max-amount').value = '';
+            document.getElementById('filter-payment-start-date').value = '';
+            document.getElementById('filter-payment-end-date').value = '';
+            
+            renderPaymentRecords();
+        }
+
+        // 渲染付款记录
+        function renderPaymentRecords(filters = {}) {
+            const recordsList = document.getElementById('payment-records-list');
+            const noRecords = document.getElementById('no-payment-records');
+            
+            if (!purchaseData.paymentRecords || purchaseData.paymentRecords.length === 0) {
+                recordsList.innerHTML = '';
+                noRecords.classList.remove('hidden');
+                updatePaymentStatistics([]);
+                return;
+            }
+            
+            // 应用筛选条件
+            let filteredRecords = purchaseData.paymentRecords.filter(record => {
+                // 产品筛选
+                if (filters.product && record.product !== filters.product) {
+                    return false;
+                }
+                
+                // 供应商筛选
+                if (filters.supplier && record.supplier !== filters.supplier) {
+                    return false;
+                }
+                
+                // 付款类型筛选
+                if (filters.type && record.type !== filters.type) {
+                    return false;
+                }
+                
+                // 编码筛选
+                if (filters.code) {
+                    const codes = filters.code.toLowerCase().split(/[,，\s]+/).filter(code => code.trim());
+                    if (codes.length > 0) {
+                        const hasMatchingCode = record.details.some(detail => 
+                            detail.code && codes.some(code => detail.code.toLowerCase().includes(code))
+                        );
+                        if (!hasMatchingCode) return false;
+                    }
+                }
+                
+                // 日期范围筛选
+                if (filters.startDate && new Date(record.createdAt) < new Date(filters.startDate)) {
+                    return false;
+                }
+                if (filters.endDate && new Date(record.createdAt) > new Date(filters.endDate + 'T23:59:59')) {
+                    return false;
+                }
+                
+                // 金额范围筛选
+                const recordAmount = parseFloat(record.amount || 0);
+                if (filters.minAmount !== undefined && recordAmount < parseFloat(filters.minAmount)) {
+                    return false;
+                }
+                if (filters.maxAmount !== undefined && recordAmount > parseFloat(filters.maxAmount)) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            // 按付款时间排序（最新的在前）
+            filteredRecords.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            if (filteredRecords.length === 0) {
+                recordsList.innerHTML = '';
+                noRecords.classList.remove('hidden');
+                updatePaymentStatistics([]);
+                return;
+            }
+            
+            // 渲染付款记录卡片
+            recordsList.innerHTML = filteredRecords.map(record => {
+                const totalAmount = parseFloat(record.amount || 0);
+                
+                const detailsHtml = record.details.map(detail => {
+                    const paymentAmount = parseFloat(detail.paymentAmount || detail.paidAmount || 0);
+                    return `
+                        <div class="bg-gray-50 rounded-lg p-3 mt-3">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-800">${detail.productName || detail.product || '未知产品'}</p>
+                                    <p class="text-xs text-gray-500">供应商: ${detail.supplier || '-'} | 编码: ${detail.code || '-'}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm font-semibold text-gray-800">¥${paymentAmount.toFixed(2)}</p>
+                                    <p class="text-xs text-gray-500">
+                                        已付: ¥${parseFloat(detail.newPaid || detail.paidAmount || 0).toFixed(2)} / 
+                                        待付: ¥${(parseFloat(detail.totalPrice || detail.total || 0) - parseFloat(detail.newPaid || detail.paidAmount || 0)).toFixed(2)} /
+                                        总计: ¥${parseFloat(detail.totalPrice || detail.total || 0).toFixed(2)}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                return `
+                    <div class="border border-gray-200 rounded-lg hover:shadow-md transition-all duration-300 overflow-hidden mb-4">
+                        <!-- 卡片头部 - 始终显示 -->
+                        <div class="p-4 cursor-pointer payment-card-header relative" onclick="togglePaymentCardDetails('${record.id}')">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="flex items-center space-x-2">
+                                        <p class="text-3xl font-bold ${record.type === '退款' ? 'text-red-600' : 'text-blue-600'}">¥${totalAmount.toFixed(2)}</p>
+                                        <span class="badge ${getPaymentTypeBadgeClass(record.type)}">${record.type}</span>
+                                    </div>
+                                </div>
+                                <div class="text-right mr-8">
+                                    <p class="text-xs text-gray-500">${record.type === '退款' ? '退款时间' : '付款时间'}</p>
+                                    <p class="text-sm text-gray-600">${formatDateTime(record.createdAt)}</p>
+                                </div>
+                            </div>
+                            <!-- 展开/收起图标 -->
+                            <div class="absolute right-4 top-4">
+                                <i class="fa fa-chevron-down text-gray-400 transition-transform duration-300 payment-card-icon" id="icon-${record.id}"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- 卡片详情 - 默认收起 -->
+                        <div class="payment-card-details hidden" id="details-${record.id}">
+                            ${detailsHtml}
+                            
+                            <!-- 备注显示和操作按钮 -->
+                            <div class="flex justify-between items-center p-4 pt-3 border-t border-gray-200">
+                                <div class="text-left">
+                                    <p class="text-xs text-gray-500">备注:</p>
+                                    <p class="text-sm text-gray-600">${record.note || '无备注'}</p>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button onclick="editPaymentNote('${record.id}')" class="btn btn-sm btn-secondary" title="编辑备注">
+                                        <i class="fa fa-pencil"></i>
+                                    </button>
+                                    <button onclick="deletePaymentRecord('${record.id}')" class="btn btn-sm btn-danger" title="删除记录" id="delete-payment-${record.id}">
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            noRecords.classList.add('hidden');
+            updatePaymentStatistics(filteredRecords);
+        }
+
+        // 切换付款卡片详情显示/隐藏
+        function togglePaymentCardDetails(recordId) {
+            const detailsElement = document.getElementById(`details-${recordId}`);
+            const iconElement = document.getElementById(`icon-${recordId}`);
+            
+            if (detailsElement && iconElement) {
+                detailsElement.classList.toggle('hidden');
+                iconElement.classList.toggle('rotate-180');
+            }
+        }
+        
+        // 编辑付款记录备注
+        let currentEditingPaymentId = null;
+        
+        function editPaymentNote(paymentId) {
+            currentEditingPaymentId = paymentId;
+            const paymentRecord = purchaseData.paymentRecords.find(record => record.id === paymentId);
+            
+            if (paymentRecord) {
+                document.getElementById('payment-note-input').value = paymentRecord.note || '';
+                document.getElementById('edit-payment-note-modal').classList.remove('hidden');
+            }
+        }
+        
+        function savePaymentNote() {
+            if (!currentEditingPaymentId) return;
+            
+            const note = document.getElementById('payment-note-input').value.trim();
+            const paymentRecord = purchaseData.paymentRecords.find(record => record.id === currentEditingPaymentId);
+            
+            if (paymentRecord) {
+                paymentRecord.note = note;
+                savePurchaseData();
+                renderPaymentRecords();
+                showToast('成功', '备注已保存', 'success');
+            }
+            
+            closePaymentNoteModal();
+        }
+        
+        function closePaymentNoteModal() {
+            currentEditingPaymentId = null;
+            document.getElementById('edit-payment-note-modal').classList.add('hidden');
+            document.getElementById('payment-note-input').value = '';
+        }
+        
+        // 删除付款记录
+        let paymentDeleteCooldown = false;
+        let currentDeletingPaymentId = null;
+        
+        function deletePaymentRecord(paymentId) {
+            // 检查冷却时间
+            if (paymentDeleteCooldown) {
+                showToast('提示', '删除操作需要等待3秒冷却时间', 'info');
+                return;
+            }
+            
+            currentDeletingPaymentId = paymentId;
+            
+            // 创建并显示顶部倒计时提示框
+            const countdownToast = document.createElement('div');
+            countdownToast.id = 'payment-delete-countdown-toast';
+            countdownToast.style.cssText = 'position: fixed !important; top: 1rem !important; right: 1rem !important; background-color: #f97316 !important; color: white !important; padding: 0.75rem 1.25rem !important; border-radius: 0.75rem !important; z-index: 9999 !important; display: flex !important; align-items: center !important; font-size: 0.875rem !important; box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important; font-weight: 600 !important; margin: 0 !important; border: none !important; outline: none !important;';
+            countdownToast.innerHTML = '<i class="fa fa-clock-o mr-2"></i> 删除冷却中，3秒后可操作';
+            document.body.appendChild(countdownToast);
+            
+            // 设置冷却时间
+            paymentDeleteCooldown = true;
+            let countdown = 3;
+            
+            const timer = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    countdownToast.innerHTML = `<i class="fa fa-clock-o mr-2"></i> 删除冷却中，${countdown}秒后可操作`;
+                } else {
+                    clearInterval(timer);
+                    document.body.removeChild(countdownToast);
+                    paymentDeleteCooldown = false;
+                    
+                    // 显示删除确认模态框
+                    document.getElementById('delete-payment-confirm-modal').classList.remove('hidden');
+                }
+            }, 1000);
+        }
+        
+        function confirmDeletePayment() {
+            if (!currentDeletingPaymentId) return;
+            
+            const index = purchaseData.paymentRecords.findIndex(record => record.id === currentDeletingPaymentId);
+            if (index !== -1) {
+                purchaseData.paymentRecords.splice(index, 1);
+                savePurchaseData();
+                renderPaymentRecords();
+                showToast('成功', '付款记录已删除', 'success');
+            }
+            
+            closeDeletePaymentModal();
+        }
+        
+        function cancelDeletePayment() {
+            closeDeletePaymentModal();
+        }
+        
+        function closeDeletePaymentModal() {
+            currentDeletingPaymentId = null;
+            document.getElementById('delete-payment-confirm-modal').classList.add('hidden');
+        }
+
+        // 更新付款记录产品选择框
+        function updatePaymentProductSelects() {
+            const filterPaymentProductSelect = document.getElementById('filter-payment-product');
+            if (!filterPaymentProductSelect) return;
+
+            // 从成本记录中获取产品列表
+            const products = [];
+            
+            // 添加产品成本项目
+            if (costRecords && costRecords.accessory) {
+                costRecords.accessory.forEach(item => {
+                    products.push(item.name);
+                });
+            }
+            
+            // 添加包装成本项目
+            if (costRecords && costRecords.packaging) {
+                costRecords.packaging.forEach(item => {
+                    products.push(item.name);
+                });
+            }
+            
+            // 去重
+            const uniqueProducts = [...new Set(products)];
+            
+            filterPaymentProductSelect.innerHTML = '<option value="">全部产品</option>';
+            uniqueProducts.forEach(product => {
+                const option = document.createElement('option');
+                option.value = product;
+                option.textContent = product;
+                filterPaymentProductSelect.appendChild(option);
+            });
+        }
+
+        // 更新付款记录供应商选择框
+        function updatePaymentSupplierSelects() {
+            const filterPaymentSupplierSelect = document.getElementById('filter-payment-supplier');
+            if (!filterPaymentSupplierSelect) return;
+
+            filterPaymentSupplierSelect.innerHTML = '<option value="">全部供应商</option>';
+            purchaseData.suppliers.forEach(supplier => {
+                const option = document.createElement('option');
+                option.value = supplier.name;
+                option.textContent = supplier.name;
+                filterPaymentSupplierSelect.appendChild(option);
+            });
+        }
+
+        // 更新产品选择框
+        function updateProductSelects() {
+            // 从成本记录中获取产品列表（包括产品成本和包装成本）
+            const products = [];
+            
+            // 添加产品成本项目
+            if (costRecords && costRecords.accessory) {
+                costRecords.accessory.forEach(item => {
+                    products.push(item.name);
+                });
+            }
+            
+            // 添加包装成本项目
+            if (costRecords && costRecords.packaging) {
+                costRecords.packaging.forEach(item => {
+                    products.push(item.name);
+                });
+            }
+            
+            // 去重
+            const uniqueProducts = [...new Set(products)];
+            
+            // 更新采购登记的产品选择框
+            const purchaseProductSelect = document.getElementById('purchase-product');
+            purchaseProductSelect.innerHTML = '<option value="">请选择产品</option>';
+            uniqueProducts.forEach(product => {
+                const option = document.createElement('option');
+                option.value = product;
+                option.textContent = product;
+                purchaseProductSelect.appendChild(option);
+            });
+
+            // 更新数据查询的产品选择框
+            const filterProductSelect = document.getElementById('filter-product');
+            filterProductSelect.innerHTML = '<option value="">全部产品</option>';
+            uniqueProducts.forEach(product => {
+                const option = document.createElement('option');
+                option.value = product;
+                option.textContent = product;
+                filterProductSelect.appendChild(option);
+            });
+
+            // 更新付款记录的产品选择框
+            const filterPaymentProductSelect = document.getElementById('filter-payment-product');
+            if (filterPaymentProductSelect) {
+                filterPaymentProductSelect.innerHTML = '<option value="">全部产品</option>';
+                uniqueProducts.forEach(product => {
+                    const option = document.createElement('option');
+                    option.value = product;
+                    option.textContent = product;
+                    filterPaymentProductSelect.appendChild(option);
+                });
+            }
+        }
+
+        // 更新供应商选择框
+        function updateSupplierSelects() {
+            // 更新采购登记的供应商选择框
+            const purchaseSupplierSelect = document.getElementById('purchase-supplier');
+            purchaseSupplierSelect.innerHTML = '<option value="">请选择供应商</option>';
+            purchaseData.suppliers.forEach(supplier => {
+                const option = document.createElement('option');
+                option.value = supplier.name;
+                option.textContent = supplier.name;
+                purchaseSupplierSelect.appendChild(option);
+            });
+
+            // 更新数据查询的供应商选择框
+            const filterSupplierSelect = document.getElementById('filter-supplier');
+            filterSupplierSelect.innerHTML = '<option value="">全部供应商</option>';
+            purchaseData.suppliers.forEach(supplier => {
+                const option = document.createElement('option');
+                option.value = supplier.name;
+                option.textContent = supplier.name;
+                filterSupplierSelect.appendChild(option);
+            });
+
+            // 更新编辑采购记录的供应商选择框
+            const editSupplierSelect = document.getElementById('edit-purchase-supplier');
+            if (editSupplierSelect) {
+                editSupplierSelect.innerHTML = '<option value="">请选择供应商</option>';
+                purchaseData.suppliers.forEach(supplier => {
+                    const option = document.createElement('option');
+                    option.value = supplier.name;
+                    option.textContent = supplier.name;
+                    editSupplierSelect.appendChild(option);
+                });
+            }
+
+            // 更新付款记录的供应商选择框
+            const filterPaymentSupplierSelect = document.getElementById('filter-payment-supplier');
+            if (filterPaymentSupplierSelect) {
+                filterPaymentSupplierSelect.innerHTML = '<option value="">全部供应商</option>';
+                purchaseData.suppliers.forEach(supplier => {
+                    const option = document.createElement('option');
+                    option.value = supplier.name;
+                    option.textContent = supplier.name;
+                    filterPaymentSupplierSelect.appendChild(option);
+                });
+            }
+        }
+
+        // 渲染采购记录（最近20条）
+        function renderPurchaseRecords() {
+            const recordsList = document.getElementById('purchase-records-list');
+            const noRecords = document.getElementById('no-purchase-records');
+            
+            if (purchaseData.purchases.length === 0) {
+                recordsList.innerHTML = '';
+                noRecords.classList.remove('hidden');
+                return;
+            }
+            
+            noRecords.classList.add('hidden');
+            
+            // 按日期和时间戳排序，最新的在前
+            const sortedPurchases = [...purchaseData.purchases].sort((a, b) => {
+                // 首先按日期排序
+                const dateCompare = new Date(b.date) - new Date(a.date);
+                if (dateCompare !== 0) {
+                    return dateCompare;
+                }
+                // 如果日期相同，按时间戳排序
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            }).slice(0, 20); // 只显示最近20条
+            
+            recordsList.innerHTML = sortedPurchases.map(purchase => {
+                // 智能获取单位信息
+                let unit = '';
+                
+                // 1. 首先检查采购记录本身是否有单位信息
+                if (purchase.unit) {
+                    unit = purchase.unit;
+                }
+                
+                // 2. 如果没有，尝试从成本数据中获取单位信息
+                if (!unit) {
+                    const allCosts = [
+                        ...costRecords.packaging,
+                        ...costRecords.accessory,
+                        ...costRecords.express,
+                        ...costRecords.platform
+                    ];
+                    
+                    const costItem = allCosts.find(c => 
+                        c.name === purchase.product || 
+                        purchase.product.includes(c.name)
+                    );
+                    
+                    if (costItem && costItem.unit) {
+                        unit = costItem.unit;
+                    }
+                }
+                
+                // 3. 如果还是没有找到，尝试从产品名称中提取单位
+                if (!unit) {
+                    const unitPattern = /\(([^)]+)\)$|（([^）]+)）$/;
+                    const match = purchase.product.match(unitPattern);
+                    if (match) {
+                        unit = match[1] || match[2];
+                    }
+                }
+                
+                // 4. 为特定产品设置默认单位
+                if (!unit) {
+                    const productUnitMap = {
+                        '水写布': '张',
+                        '宣纸': '张',
+                        '毛笔': '支',
+                        '墨汁': '瓶',
+                        '砚台': '个'
+                    };
+                    
+                    for (const [keyword, defaultUnit] of Object.entries(productUnitMap)) {
+                        if (purchase.product.includes(keyword)) {
+                            unit = defaultUnit;
+                            break;
+                        }
+                    }
+                }
+                
+                return `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 whitespace-nowrap">${purchase.product}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${purchase.quantity}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${unit || ''}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${purchase.unitPrice.toFixed(2)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${purchase.totalPrice.toFixed(2)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${purchase.supplier}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${formatDate(purchase.date)}</td>
+                </tr>
+                `;
+            }).join('');
+        }
+
+        // 渲染采购数据列表
+        function renderPurchaseData(filteredPurchases = null) {
+            const dataList = document.getElementById('purchase-data-list');
+            const noData = document.getElementById('no-purchase-data');
+            
+            const purchases = filteredPurchases || purchaseData.purchases;
+            
+            if (purchases.length === 0) {
+                dataList.innerHTML = '';
+                noData.classList.remove('hidden');
+                return;
+            }
+            
+            // 更新数据统计
+            const dataCountElement = document.getElementById('purchase-data-count');
+            if (dataCountElement) {
+                dataCountElement.textContent = purchases.length.toString();
+            }
+            
+            noData.classList.add('hidden');
+            
+            // 按日期和时间戳排序，最新的在前
+            const sortedPurchases = [...purchases].sort((a, b) => {
+                // 首先按日期排序
+                const dateCompare = new Date(b.date) - new Date(a.date);
+                if (dateCompare !== 0) {
+                    return dateCompare;
+                }
+                // 如果日期相同，按时间戳排序
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            });
+            
+            dataList.innerHTML = sortedPurchases.map((purchase) => {
+                // 找到该记录在原始数组中的索引
+                const originalIndex = purchaseData.purchases.findIndex(p => p.id === purchase.id);
+                // 智能获取单位信息
+                let unit = '';
+                
+                // 1. 首先检查采购记录本身是否有单位信息
+                if (purchase.unit) {
+                    unit = purchase.unit;
+                }
+                
+                // 2. 如果没有，尝试从成本数据中获取单位信息
+                if (!unit) {
+                    const allCosts = [
+                        ...costRecords.packaging,
+                        ...costRecords.accessory,
+                        ...costRecords.express,
+                        ...costRecords.platform
+                    ];
+                    
+                    const costItem = allCosts.find(c => 
+                        c.name === purchase.product || 
+                        purchase.product.includes(c.name)
+                    );
+                    
+                    if (costItem && costItem.unit) {
+                        unit = costItem.unit;
+                    }
+                }
+                
+                // 3. 如果还是没有找到，尝试从产品名称中提取单位
+                if (!unit) {
+                    const unitPattern = /\(([^)]+)\)$|（([^）]+)）$/;
+                    const match = purchase.product.match(unitPattern);
+                    if (match) {
+                        unit = match[1] || match[2];
+                    }
+                }
+                
+                // 4. 为特定产品设置默认单位
+                if (!unit) {
+                    const productUnitMap = {
+                        '水写布': '张',
+                        '宣纸': '张',
+                        '毛笔': '支',
+                        '墨汁': '瓶',
+                        '砚台': '个'
+                    };
+                    
+                    for (const [keyword, defaultUnit] of Object.entries(productUnitMap)) {
+                        if (purchase.product.includes(keyword)) {
+                            unit = defaultUnit;
+                            break;
+                        }
+                    }
+                }
+                
+                return `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 whitespace-nowrap">
+                        <input type="checkbox" class="purchase-checkbox" value="${originalIndex}" onchange="updateBatchActions()">
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap">${purchase.product}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${purchase.quantity}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${unit || ''}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${purchase.unitPrice.toFixed(2)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${purchase.totalPrice.toFixed(2)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap font-medium text-blue-600">${(purchase.totalPrice - purchase.paidAmount).toFixed(2)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${purchase.supplier}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${formatDate(purchase.date)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap font-mono">${purchase.code || 'N/A'}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-center">
+                        <div class="flex space-x-2 justify-center items-center">
+                            <button onclick="editPurchase(${originalIndex})" class="text-primary hover:text-primary/80">
+                                <i class="fa fa-pencil"></i>
+                            </button>
+                            <button onclick="deletePurchase(${originalIndex}, event)" class="text-danger hover:text-danger/80">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
+
+        // 更新统计数据
+        function updateStatistics() {
+            // 获取近一个月的数据
+            const oneMonthAgo = new Date();
+            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+            
+            const recentPurchases = purchaseData.purchases.filter(purchase => 
+                new Date(purchase.date) >= oneMonthAgo
+            );
+            
+            // 计算采购种类数量
+            const productSet = new Set();
+            recentPurchases.forEach(purchase => {
+                productSet.add(purchase.product);
+            });
+            document.getElementById('purchase-category-count').textContent = productSet.size;
+            
+            // 计算采购金额
+            const totalAmount = recentPurchases.reduce((sum, purchase) => 
+                sum + purchase.totalPrice, 0
+            );
+            document.getElementById('purchase-amount').textContent = `¥${totalAmount.toFixed(2)}`;
+            
+            // 计算未付金额（所有数据）
+            const unpaidAmount = purchaseData.purchases.reduce((sum, purchase) => 
+                sum + (purchase.totalPrice - purchase.paidAmount), 0
+            );
+            document.getElementById('unpaid-amount').textContent = `¥${unpaidAmount.toFixed(2)}`;
+        }
+
+        // 保存采购记录
+        function savePurchase() {
+            const product = document.getElementById('purchase-product').value;
+            const supplier = document.getElementById('purchase-supplier').value;
+            const date = document.getElementById('purchase-date').value;
+            const quantity = parseInt(document.getElementById('purchase-quantity').value);
+            const unitPrice = parseFloat(document.getElementById('purchase-unit-price').value);
+            const totalPrice = parseFloat(document.getElementById('purchase-total-price').value);
+            const paidAmount = parseFloat(document.getElementById('purchase-paid-amount').value) || 0;
+            const note = document.getElementById('purchase-note').value;
+            
+            // 验证输入
+            if (!product || !supplier || !date || !quantity || !unitPrice) {
+                showToast('错误', '请填写完整的采购信息', 'error');
+                return;
+            }
+            
+            // 创建采购记录
+            const purchase = {
+                id: Date.now().toString(),
+                code: generatePurchaseCode(), // 自动生成唯一编码
+                product,
+                supplier,
+                date: date.split('T')[0], // 提取日期部分
+                quantity,
+                unitPrice,
+                totalPrice,
+                paidAmount,
+                note,
+                createdAt: new Date().toISOString() // 使用当前系统时间作为创建时间戳
+            };
+            
+            // 添加到数据中
+            purchaseData.purchases.push(purchase);
+            
+            // 如果有已付金额，创建付款记录
+            if (paidAmount > 0) {
+                const paymentRecord = {
+                    id: Date.now().toString(),
+                    type: '登记付款',
+                    purchaseId: purchase.id,
+                    product,
+                    supplier,
+                    amount: paidAmount,
+                    date: purchase.date,
+                    createdAt: new Date().toISOString(),
+                    details: [purchase]
+                };
+                purchaseData.paymentRecords.push(paymentRecord);
+            }
+            
+            savePurchaseData();
+            
+            // 更新界面
+            renderPurchaseRecords();
+            renderPurchaseData();
+            updateStatistics();
+            
+            // 更新付款记录列表
+            if (typeof renderPaymentRecords === 'function') {
+                renderPaymentRecords();
+            }
+            
+            // 清空表单
+            document.getElementById('purchase-form').reset();
+            document.getElementById('purchase-date').value = new Date().toISOString().slice(0, 16);
+            
+            showToast('成功', '采购记录已保存', 'success');
+        }
+
+        // 编辑采购记录
+        function editPurchase(index) {
+            console.log('=== 打开编辑窗口 ===', '索引:', index, '数据总数:', purchaseData.purchases.length);
+            
+            // 记录当前所有数据的备注，用于后续对比
+            console.log('=== 打开编辑窗口前的所有备注 ===');
+            purchaseData.purchases.forEach((p, i) => {
+                console.log(`索引 ${i} (ID: ${p.id}):`, p.note);
+            });
+            
+            try {
+                const purchase = purchaseData.purchases[index];
+                if (!purchase) {
+                    console.error('未找到采购记录:', index);
+                    showToast('错误', '未找到采购记录', 'error');
+                    return;
+                }
+                
+                console.log('=== 当前编辑的记录 ===', JSON.stringify(purchase));
+                
+                // 填充编辑表单
+                const idInput = document.getElementById('edit-purchase-id');
+                idInput.value = index;
+                console.log('=== 设置编辑ID ===', idInput.value);
+                
+                document.getElementById('edit-purchase-product').value = purchase.product;
+                document.getElementById('edit-purchase-supplier').value = purchase.supplier;
+                
+                // 设置日期时间（合并日期和时间戳）
+                const dateTimeInput = document.getElementById('edit-purchase-date');
+                if (dateTimeInput) {
+                    // 如果有时间戳，使用时间戳；否则使用日期
+                    const dateToUse = purchase.createdAt ? new Date(purchase.createdAt) : new Date(purchase.date);
+                    
+                    // 确保正确显示本地时间，避免时区偏移问题
+                    const year = dateToUse.getFullYear();
+                    const month = String(dateToUse.getMonth() + 1).padStart(2, '0');
+                    const day = String(dateToUse.getDate()).padStart(2, '0');
+                    const hours = String(dateToUse.getHours()).padStart(2, '0');
+                    const minutes = String(dateToUse.getMinutes()).padStart(2, '0');
+                    
+                    const localDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+                    dateTimeInput.value = localDateTime;
+                    
+                    console.log('=== 设置编辑时间 ===', { 
+                        originalCreatedAt: purchase.createdAt,
+                        dateToUse: dateToUse.toString(),
+                        localDateTime: localDateTime,
+                        year, month, day, hours, minutes
+                    });
+                }
+                
+                document.getElementById('edit-purchase-quantity').value = purchase.quantity;
+                document.getElementById('edit-purchase-unit-price').value = purchase.unitPrice;
+                
+                // 清除可能存在的警告提示
+                const existingWarning = document.getElementById('paid-amount-warning');
+                if (existingWarning) {
+                    existingWarning.remove();
+                }
+                
+                // 设置已付金额，并限制最大值为总价
+                const paidAmountInput = document.getElementById('edit-purchase-paid-amount');
+                paidAmountInput.value = purchase.paidAmount;
+                paidAmountInput.max = purchase.totalPrice;
+                
+                // 添加单价和数量变化监听器，动态更新已付金额的最大值
+                const quantityInput = document.getElementById('edit-purchase-quantity');
+                const unitPriceInput = document.getElementById('edit-purchase-unit-price');
+                
+                const updateMaxPaidAmount = () => {
+                    const quantity = parseFloat(quantityInput.value) || 0;
+                    const unitPrice = parseFloat(unitPriceInput.value) || 0;
+                    const totalPrice = quantity * unitPrice;
+                    paidAmountInput.max = totalPrice;
+                    
+                    // 显示总价变化提示
+                    const currentPaid = parseFloat(paidAmountInput.value) || 0;
+                    if (currentPaid > totalPrice) {
+                        // 显示警告提示，但不自动修改用户输入
+                        const warningDiv = document.getElementById('paid-amount-warning');
+                        if (!warningDiv) {
+                            const newWarning = document.createElement('div');
+                            newWarning.id = 'paid-amount-warning';
+                            newWarning.className = 'text-red-500 text-sm mt-1';
+                            newWarning.innerHTML = `⚠️ 已付金额不能超过总价 ${totalPrice.toFixed(2)} 元`;
+                            paidAmountInput.parentNode.appendChild(newWarning);
+                        } else {
+                            warningDiv.innerHTML = `⚠️ 已付金额不能超过总价 ${totalPrice.toFixed(2)} 元`;
+                            warningDiv.classList.remove('hidden');
+                        }
+                    } else {
+                        // 隐藏警告
+                        const warningDiv = document.getElementById('paid-amount-warning');
+                        if (warningDiv) {
+                            warningDiv.classList.add('hidden');
+                        }
+                    }
+                };
+                
+                // 移除之前的监听器（如果存在）
+                quantityInput.removeEventListener('input', updateMaxPaidAmount);
+                unitPriceInput.removeEventListener('input', updateMaxPaidAmount);
+                
+                // 添加新的监听器
+                quantityInput.addEventListener('input', updateMaxPaidAmount);
+                unitPriceInput.addEventListener('input', updateMaxPaidAmount);
+                
+                // 立即设置备注信息
+                const noteInput = document.getElementById('edit-purchase-note');
+                if (noteInput) {
+                    const noteValue = purchase.note || '';
+                    console.log('=== 设置到表单的备注 ===', noteValue);
+                    noteInput.value = noteValue;
+                } else {
+                    console.error('=== 未找到备注输入框 ===');
+                }
+                
+                // 显示编辑模态框
+                const modal = document.getElementById('edit-purchase-modal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    console.log('编辑模态框已显示');
+                } else {
+                    console.error('未找到编辑模态框元素');
+                }
+            } catch (error) {
+                console.error('打开编辑窗口失败:', error);
+                showToast('错误', '打开编辑窗口失败', 'error');
+            }
+        }
+
+        // 保存编辑的采购记录
+        function saveEditPurchase() {
+            console.log('=== 开始保存编辑记录 ===');
+            
+            // 1. 获取并验证索引
+            const idInput = document.getElementById('edit-purchase-id');
+            const indexStr = idInput.value;
+            const index = parseInt(indexStr);
+            
+            console.log('=== 从表单获取的索引 ===', '原始值:', indexStr, '转换后:', index, '类型:', typeof index);
+            
+            if (isNaN(index) || index < 0 || index >= purchaseData.purchases.length) {
+                console.error('无效的索引:', index, '数据总数:', purchaseData.purchases.length);
+                showToast('错误', '保存失败：无效的记录索引', 'error');
+                return;
+            }
+            
+            // 2. 记录保存前的状态
+            console.log('=== 保存前的数据状态 ===');
+            purchaseData.purchases.forEach((p, i) => {
+                console.log(`索引 ${i} (ID: ${p.id}):`, p.note);
+            });
+            
+            const originalPurchase = purchaseData.purchases[index];
+            console.log('=== 原始记录 ===', JSON.stringify(originalPurchase));
+            
+            // 3. 逐个获取表单数据并记录
+            const supplier = document.getElementById('edit-purchase-supplier').value;
+            const dateTime = document.getElementById('edit-purchase-date').value;
+            const quantity = parseInt(document.getElementById('edit-purchase-quantity').value);
+            const unitPrice = parseFloat(document.getElementById('edit-purchase-unit-price').value);
+            const paidAmount = parseFloat(document.getElementById('edit-purchase-paid-amount').value) || 0;
+            const note = document.getElementById('edit-purchase-note').value;
+            
+            console.log('=== 逐个获取的表单数据 ===', { supplier, dateTime, quantity, unitPrice, paidAmount, note });
+            
+            // 验证日期时间格式
+            let createdAt = originalPurchase.createdAt;
+            let date = originalPurchase.date;
+            
+            if (dateTime) {
+                try {
+                    // 直接使用本地时间，不进行UTC转换，避免时区偏移
+                    const dateObj = new Date(dateTime);
+                    
+                    if (!isNaN(dateObj.getTime())) {
+                        createdAt = dateObj.toISOString();
+                        date = dateObj.toISOString().split('T')[0];
+                        console.log('=== 日期时间解析成功 ===', { 
+                            dateTime, 
+                            createdAt, 
+                            date, 
+                            localTime: dateObj.toString(),
+                            localHours: dateObj.getHours()
+                        });
+                    } else {
+                        console.error('=== 日期时间格式无效 ===', dateTime);
+                    }
+                } catch (error) {
+                    console.error('=== 日期时间解析错误 ===', error, dateTime);
+                }
+            } else {
+                console.log('=== 未修改日期时间 ===', { originalCreatedAt: originalPurchase.createdAt, originalDate: originalPurchase.date });
+            }
+            
+            // 4. 验证已付金额不能超过总价
+            const totalPrice = quantity * unitPrice;
+            if (paidAmount > totalPrice) {
+                showToast('错误', `已付金额不能超过总价 ${totalPrice.toFixed(2)} 元`, 'error');
+                return;
+            }
+            
+            // 5. 创建新对象
+            const updatedPurchase = {
+                id: originalPurchase.id,
+                createdAt: createdAt,
+                product: originalPurchase.product, // 产品名称不应被修改
+                supplier,
+                date: date,
+                quantity,
+                unitPrice,
+                paidAmount,
+                totalPrice: totalPrice,
+                note,
+                code: originalPurchase.code // 保留原始编码，确保永久性
+            };
+            
+            console.log('=== 准备保存的新记录 ===', JSON.stringify(updatedPurchase));
+            
+            // 5. 替换数组中的元素
+            console.log('=== 替换数组元素前 ===', '数组长度:', purchaseData.purchases.length);
+            purchaseData.purchases[index] = updatedPurchase;
+            console.log('=== 替换数组元素后 ===', '数组长度:', purchaseData.purchases.length);
+            
+            // 6. 验证替换结果
+            const replacedPurchase = purchaseData.purchases[index];
+            console.log('=== 替换后的记录 ===', JSON.stringify(replacedPurchase));
+            
+            // 7. 检查付款金额变化
+            const originalPaidAmount = parseFloat(originalPurchase.paidAmount || 0);
+            const newPaidAmount = parseFloat(paidAmount);
+            
+            if (newPaidAmount > originalPaidAmount) {
+                // 付款金额增加，创建付款记录
+                const paymentIncrease = newPaidAmount - originalPaidAmount;
+                const paymentRecord = {
+                    id: Date.now().toString(),
+                    type: '编辑付款',
+                    purchaseId: originalPurchase.id,
+                    product: originalPurchase.product,
+                    supplier,
+                    amount: paymentIncrease,
+                    date: date,
+                    createdAt: new Date().toISOString(),
+                    details: [updatedPurchase]
+                };
+                purchaseData.paymentRecords.push(paymentRecord);
+            } else if (newPaidAmount < originalPaidAmount) {
+                // 付款金额减少，创建退款记录
+                const refundAmount = originalPaidAmount - newPaidAmount;
+                const refundRecord = {
+                    id: Date.now().toString(),
+                    type: '退款',
+                    purchaseId: originalPurchase.id,
+                    product: originalPurchase.product,
+                    supplier,
+                    amount: refundAmount,
+                    originalAmount: originalPaidAmount,
+                    newAmount: newPaidAmount,
+                    date: date,
+                    createdAt: new Date().toISOString(),
+                    details: [updatedPurchase],
+                    note: `退款金额: ¥${refundAmount.toFixed(2)}`
+                };
+                purchaseData.paymentRecords.push(refundRecord);
+            }
+            
+            savePurchaseData();
+            
+            console.log('=== 保存后的数据状态 ===');
+            purchaseData.purchases.forEach((p, i) => {
+                console.log(`索引 ${i} (ID: ${p.id}):`, p.note);
+            });
+            
+            // 8. 强制重新渲染
+            renderPurchaseData();
+            renderPurchaseRecords();
+            updateStatistics();
+            
+            // 保存数据
+            savePurchaseData();
+            
+            // 更新界面
+            renderPurchaseRecords();
+            renderPurchaseData();
+            updateStatistics();
+            
+            // 更新付款记录列表
+            if (typeof renderPaymentRecords === 'function') {
+                renderPaymentRecords();
+            }
+            
+            // 更新付款记录列表
+            if (typeof renderPaymentRecords === 'function') {
+                renderPaymentRecords();
+            }
+            
+            // 关闭模态框
+            document.getElementById('edit-purchase-modal').classList.add('hidden');
+            
+            showToast('成功', '采购记录已更新', 'success');
+        }
+
+        // 删除采购记录
+        let deleteCooldown = false;
+        let pendingDeleteIndex = -1;
+        
+        function deletePurchase(index, event) {
+            // 检查冷却时间
+            if (deleteCooldown) {
+                showToast('提示', '删除操作需要等待3秒冷却时间', 'info');
+                return;
+            }
+            
+            // 获取点击的图标元素
+            const deleteIcon = event ? event.currentTarget : null;
+            if (deleteIcon) {
+                // 添加冷却样式
+                deleteIcon.classList.add('delete-cooldown');
+                deleteIcon.disabled = true;
+                
+                // 创建倒计时元素
+                const countdownEl = document.createElement('span');
+                countdownEl.className = 'cooldown-countdown';
+                countdownEl.textContent = '3';
+                deleteIcon.appendChild(countdownEl);
+                
+                // 倒计时
+                let countdown = 3;
+                const timer = setInterval(() => {
+                    countdown--;
+                    if (countdown > 0) {
+                        countdownEl.textContent = countdown;
+                    } else {
+                        clearInterval(timer);
+                        deleteIcon.removeChild(countdownEl);
+                    }
+                }, 1000);
+            }
+            
+            // 设置待删除的索引
+            pendingDeleteIndex = index;
+            
+            // 设置冷却时间
+            deleteCooldown = true;
+            showToast('提示', '请等待3秒后确认删除...', 'info');
+            
+            // 3秒后显示确认删除模态框
+            setTimeout(() => {
+                document.getElementById('delete-confirm-modal').classList.remove('hidden');
+                deleteCooldown = false; // 冷却时间结束
+                
+                // 移除冷却样式
+                if (deleteIcon) {
+                    deleteIcon.classList.remove('delete-cooldown');
+                    deleteIcon.disabled = false;
+                }
+            }, 3000);
+        }
+        
+        // 确认删除
+        function confirmDelete() {
+            if (pendingDeleteIndex !== -1) {
+                purchaseData.purchases.splice(pendingDeleteIndex, 1);
+                savePurchaseData();
+                
+                // 更新界面
+                renderPurchaseRecords();
+                renderPurchaseData();
+                updateStatistics();
+                
+                showToast('成功', '采购记录已删除', 'success');
+                
+                // 重置待删除索引
+                pendingDeleteIndex = -1;
+            }
+            
+            // 关闭模态框
+            document.getElementById('delete-confirm-modal').classList.add('hidden');
+        }
+        
+        // 取消删除
+        function cancelDelete() {
+            pendingDeleteIndex = -1;
+            document.getElementById('delete-confirm-modal').classList.add('hidden');
+        }
+
+        // 查询采购数据
+        function queryPurchaseData() {
+            const product = document.getElementById('filter-product').value;
+            const supplier = document.getElementById('filter-supplier').value;
+            const search = document.getElementById('filter-search').value.toLowerCase();
+            const paymentStatus = document.getElementById('filter-payment-status').value;
+            const startDate = document.getElementById('filter-start-date').value;
+            const endDate = document.getElementById('filter-end-date').value;
+            
+            // 过滤数据
+            let filteredPurchases = purchaseData.purchases.filter(purchase => {
+                // 产品过滤
+                if (product && purchase.product !== product) {
+                    return false;
+                }
+                
+                // 供应商过滤
+                if (supplier && purchase.supplier !== supplier) {
+                    return false;
+                }
+                
+                // 搜索过滤 - 支持多条编码同时查找（用逗号、空格等分隔）
+                if (search) {
+                    // 将搜索字符串按常见分隔符分割成多个编码
+                    const searchTerms = search.toLowerCase().split(/[\s,，;；]+/).filter(term => term.trim() !== '');
+                    if (searchTerms.length > 0) {
+                        // 检查采购记录的编码是否包含任何一个搜索词
+                        const hasMatchingCode = purchase.code && searchTerms.some(term => 
+                            purchase.code.toLowerCase().includes(term)
+                        );
+                        if (!hasMatchingCode) {
+                            return false;
+                        }
+                    }
+                }
+                
+                // 支付状态过滤
+                if (paymentStatus) {
+                    const remainingAmount = purchase.totalPrice - purchase.paidAmount;
+                    if (paymentStatus === 'unpaid' && remainingAmount <= 0) {
+                        return false;
+                    } else if (paymentStatus === 'partial' && (remainingAmount <= 0 || remainingAmount === purchase.totalPrice)) {
+                        return false;
+                    } else if (paymentStatus === 'paid' && remainingAmount > 0) {
+                        return false;
+                    }
+                }
+                
+                // 日期过滤
+                if (startDate && new Date(purchase.date) < new Date(startDate)) {
+                    return false;
+                }
+                
+                if (endDate && new Date(purchase.date) > new Date(endDate)) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            // 更新统计数据（基于过滤后的数据）
+            updateFilteredStatistics(filteredPurchases);
+            
+            // 渲染过滤后的数据
+            renderPurchaseData(filteredPurchases);
+        }
+
+        // 更新过滤后的统计数据
+        function updateFilteredStatistics(filteredPurchases) {
+            // 计算采购种类数量
+            const productSet = new Set();
+            filteredPurchases.forEach(purchase => {
+                productSet.add(purchase.product);
+            });
+            document.getElementById('purchase-category-count').textContent = productSet.size;
+            
+            // 计算采购金额
+            const totalAmount = filteredPurchases.reduce((sum, purchase) => 
+                sum + purchase.totalPrice, 0
+            );
+            document.getElementById('purchase-amount').textContent = `¥${totalAmount.toFixed(2)}`;
+            
+            // 计算未付金额
+            const unpaidAmount = filteredPurchases.reduce((sum, purchase) => 
+                sum + (purchase.totalPrice - purchase.paidAmount), 0
+            );
+            document.getElementById('unpaid-amount').textContent = `¥${unpaidAmount.toFixed(2)}`;
+        }
+
+        // 重置查询条件
+        function resetFilter() {
+            document.getElementById('purchase-filter-form').reset();
+            
+            // 更新统计数据（恢复为近一个月的数据）
+            updateStatistics();
+            
+            // 渲染所有数据
+            renderPurchaseData();
+        }
+
+        // 导出采购数据到Excel（增加备注导出功能）
+        function exportPurchaseDataToExcel() {
+            try {
+                // 获取当前显示的数据
+                const dataList = document.getElementById('purchase-data-list');
+                const rows = dataList.querySelectorAll('tr');
+                
+                if (rows.length === 0) {
+                    showToast('错误', '暂无数据可导出', 'error');
+                    return;
+                }
+                
+                // 准备数据，增加单位和备注列
+                const headers = ['产品名称', '数量', '单位', '单价(¥)', '总价(¥)', '待付金额(¥)', '供应商', '进货日期时间', '备注'];
+                const data = [headers];
+                
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    const rowData = [];
+                    
+                    // 获取原始索引（从复选框的值中获取）
+                    const checkbox = row.querySelector('.purchase-checkbox');
+                    const originalIndex = checkbox ? parseInt(checkbox.value) : -1;
+                    
+                    // 获取单位信息
+                    let unit = '';
+                    let note = '';
+                    if (originalIndex !== -1 && purchaseData.purchases[originalIndex]) {
+                        const purchase = purchaseData.purchases[originalIndex];
+                        
+                        // 获取备注信息
+                        note = purchase.note || '';
+                        
+                        // 1. 首先检查采购记录本身是否有单位信息
+                        if (purchase.unit) {
+                            unit = purchase.unit;
+                        }
+                        
+                        // 2. 如果没有，尝试从成本数据中获取单位信息
+                        if (!unit) {
+                            const allCosts = [
+                                ...costRecords.packaging,
+                                ...costRecords.accessory,
+                                ...costRecords.express,
+                                ...costRecords.platform
+                            ];
+                            
+                            const costItem = allCosts.find(c => 
+                                c.name === purchase.product || 
+                                purchase.product.includes(c.name)
+                            );
+                            
+                            if (costItem && costItem.unit) {
+                                unit = costItem.unit;
+                            }
+                        }
+                        
+                        // 3. 如果还是没有找到，尝试从产品名称中提取单位
+                        if (!unit) {
+                            const unitPattern = /\(([^)]+)\)$|（([^）]+)）$/;
+                            const match = purchase.product.match(unitPattern);
+                            if (match) {
+                                unit = match[1] || match[2];
+                            }
+                        }
+                        
+                        // 4. 为特定产品设置默认单位
+                        if (!unit) {
+                            const productUnitMap = {
+                                '水写布': '张',
+                                '宣纸': '张',
+                                '毛笔': '支',
+                                '墨汁': '瓶',
+                                '砚台': '个'
+                            };
+                            
+                            for (const [keyword, defaultUnit] of Object.entries(productUnitMap)) {
+                                if (purchase.product.includes(keyword)) {
+                                    unit = defaultUnit;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 跳过复选框列（第一列），获取其他数据列
+                    // 产品名称
+                    rowData.push(cells[1].textContent.trim());
+                    // 数量
+                    rowData.push(cells[2].textContent.trim());
+                    // 单位（智能获取）
+                    rowData.push(unit);
+                    // 单价
+                    rowData.push(cells[4].textContent.trim());
+                    // 总价
+                    rowData.push(cells[5].textContent.trim());
+                    // 待付金额
+                    rowData.push(cells[6].textContent.trim());
+                    // 供应商
+                    rowData.push(cells[7].textContent.trim());
+                    // 进货日期（包含时间戳）
+                    let dateTimeStr = cells[8].textContent.trim();
+                    if (originalIndex !== -1 && purchaseData.purchases[originalIndex]) {
+                        const purchase = purchaseData.purchases[originalIndex];
+                        if (purchase.createdAt) {
+                            const date = new Date(purchase.createdAt);
+                            dateTimeStr = `${dateTimeStr} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+                        }
+                    }
+                    rowData.push(dateTimeStr);
+                    
+                    // 添加备注信息
+                    rowData.push(note);
+                    data.push(rowData);
+                });
+                
+                // 创建Excel工作簿和工作表
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                
+                // 设置列宽，为备注列增加宽度
+                const colWidths = [
+                    { wch: 20 }, // 产品名称
+                    { wch: 10 }, // 数量
+                    { wch: 8 },  // 单位
+                    { wch: 10 }, // 单价
+                    { wch: 10 }, // 总价
+                    { wch: 10 }, // 待付金额
+                    { wch: 20 }, // 供应商
+                    { wch: 20 }, // 进货日期时间
+                    { wch: 40 }  // 备注（增加宽度）
+                ];
+                ws['!cols'] = colWidths;
+                
+                // 添加工作表到工作簿
+                XLSX.utils.book_append_sheet(wb, ws, '采购数据');
+                
+                // 生成文件名并导出
+                const fileName = `采购数据_${new Date().toISOString().split('T')[0]}.xlsx`;
+                XLSX.writeFile(wb, fileName);
+                
+                showToast('成功', '采购数据导出成功', 'success');
+                
+            } catch (error) {
+                console.error('导出Excel时发生错误:', error);
+                showToast('错误', '导出失败，请重试', 'error');
+            }
+        }
+
+        // 渲染供应商列表
+        function renderSuppliersList() {
+            const suppliersList = document.getElementById('suppliers-list');
+            
+            if (purchaseData.suppliers.length === 0) {
+                suppliersList.innerHTML = '<div class="text-center py-4 text-gray-500">暂无供应商</div>';
+                return;
+            }
+            
+            suppliersList.innerHTML = purchaseData.suppliers.map((supplier, index) => `
+                <div class="supplier-item flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-2">
+                    <div class="supplier-info flex-1">
+                        <p class="supplier-name font-medium text-gray-800">${supplier.name}</p>
+                        <p class="supplier-contact text-sm text-gray-500">${supplier.contact || '无联系人'}</p>
+                    </div>
+                    <div class="supplier-actions flex space-x-2">
+                        <button onclick="startEditSupplier(${index})" class="edit-btn text-primary hover:text-primary/80" title="编辑供应商">
+                            <i class="fa fa-pencil"></i>
+                        </button>
+                        <button onclick="deleteSupplier(${index})" class="delete-btn text-danger hover:text-danger/80" title="删除供应商">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="supplier-edit-form hidden flex-1">
+                        <input type="text" class="supplier-name-input w-full px-3 py-1 border border-gray-300 rounded text-sm" value="${supplier.name}" placeholder="供应商名称">
+                        <input type="text" class="supplier-contact-input w-full px-3 py-1 border border-gray-300 rounded text-sm mt-1" value="${supplier.contact || ''}" placeholder="联系人">
+                        <div class="flex space-x-1 mt-1">
+                            <button onclick="saveSupplierEdit(${index})" class="save-btn px-2 py-1 bg-primary text-white text-xs rounded">保存</button>
+                            <button onclick="cancelSupplierEdit(${index})" class="cancel-btn px-2 py-1 bg-gray-300 text-gray-700 text-xs rounded">取消</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 添加供应商
+        function addSupplier() {
+            const name = document.getElementById('new-supplier-name').value.trim();
+            const contact = document.getElementById('new-supplier-contact').value.trim();
+            
+            if (!name) {
+                showToast('错误', '请输入供应商名称', 'error');
+                return;
+            }
+            
+            // 检查是否已存在
+            if (purchaseData.suppliers.some(s => s.name === name)) {
+                showToast('错误', '供应商名称已存在', 'error');
+                return;
+            }
+            
+            // 添加供应商
+            purchaseData.suppliers.push({ name, contact });
+            savePurchaseData();
+            
+            // 更新界面
+            updateSupplierSelects();
+            renderSuppliersList();
+            
+            // 清空输入框
+            document.getElementById('new-supplier-name').value = '';
+            document.getElementById('new-supplier-contact').value = '';
+            
+            showToast('成功', '供应商已添加', 'success');
+        }
+
+        // 内联编辑供应商
+        function startEditSupplier(index) {
+            const supplierItems = document.querySelectorAll('.supplier-item');
+            const item = supplierItems[index];
+            
+            // 隐藏信息和操作按钮，显示编辑表单
+            item.querySelector('.supplier-info').classList.add('hidden');
+            item.querySelector('.supplier-actions').classList.add('hidden');
+            item.querySelector('.supplier-edit-form').classList.remove('hidden');
+            
+            // 聚焦到名称输入框
+            item.querySelector('.supplier-name-input').focus();
+        }
+        
+        function saveSupplierEdit(index) {
+            const supplierItems = document.querySelectorAll('.supplier-item');
+            const item = supplierItems[index];
+            const supplier = purchaseData.suppliers[index];
+            
+            // 获取输入值
+            const nameInput = item.querySelector('.supplier-name-input');
+            const contactInput = item.querySelector('.supplier-contact-input');
+            const newName = nameInput.value.trim();
+            const newContact = contactInput.value.trim();
+            
+            // 验证名称
+            if (!newName) {
+                showToast('错误', '供应商名称不能为空', 'error');
+                nameInput.focus();
+                return;
+            }
+            
+            // 检查名称是否重复（排除当前编辑的供应商）
+            const isDuplicate = purchaseData.suppliers.some((s, i) => 
+                i !== index && s.name === newName
+            );
+            
+            if (isDuplicate) {
+                showToast('错误', '供应商名称已存在', 'error');
+                nameInput.focus();
+                return;
+            }
+            
+            // 更新供应商信息
+            const oldName = supplier.name;
+            supplier.name = newName;
+            supplier.contact = newContact;
+            
+            // 同时更新所有采购记录中的供应商名称
+            purchaseData.purchases.forEach(purchase => {
+                if (purchase.supplier === oldName) {
+                    purchase.supplier = newName;
+                }
+            });
+            
+            savePurchaseData();
+            
+            // 更新界面
+            updateSupplierSelects();
+            renderSuppliersList();
+            renderPurchaseRecords();
+            renderPurchaseData();
+            
+            showToast('成功', '供应商信息已更新', 'success');
+        }
+        
+        function cancelSupplierEdit(index) {
+            const supplierItems = document.querySelectorAll('.supplier-item');
+            const item = supplierItems[index];
+            
+            // 显示信息和操作按钮，隐藏编辑表单
+            item.querySelector('.supplier-info').classList.remove('hidden');
+            item.querySelector('.supplier-actions').classList.remove('hidden');
+            item.querySelector('.supplier-edit-form').classList.add('hidden');
+        }
+
+        // 删除供应商
+        function deleteSupplier(index) {
+            const supplier = purchaseData.suppliers[index];
+            
+            // 检查是否有采购记录使用此供应商
+            const isUsed = purchaseData.purchases.some(p => p.supplier === supplier.name);
+            
+            if (isUsed) {
+                showToast('错误', '该供应商正在使用中，无法删除', 'error');
+                return;
+            }
+            
+            if (confirm(`确定要删除供应商"${supplier.name}"吗？`)) {
+                purchaseData.suppliers.splice(index, 1);
+                savePurchaseData();
+                
+                // 更新界面
+                updateSupplierSelects();
+                renderSuppliersList();
+                
+                showToast('成功', '供应商已删除', 'success');
+            }
+        }
+
+        // 格式化日期
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+
+        // 事件监听器
+        document.addEventListener('DOMContentLoaded', function() {
+            // 采购管理标签切换
+            const purchaseTabs = document.querySelectorAll('.purchase-tab');
+            purchaseTabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // 移除所有标签的激活状态
+                    purchaseTabs.forEach(t => {
+                        t.classList.remove('bg-blue-50', 'text-primary');
+                        t.classList.add('text-gray-600', 'hover:text-gray-800', 'hover:bg-gray-50');
+                    });
+                    
+                    // 添加当前标签的激活状态
+                    this.classList.remove('text-gray-600', 'hover:text-gray-800', 'hover:bg-gray-50');
+                    this.classList.add('bg-blue-50', 'text-primary');
+                    
+                    // 显示对应的内容区域
+                    const tabId = this.getAttribute('data-purchase-tab');
+                    document.querySelectorAll('.purchase-tab-content').forEach(content => {
+                        content.classList.add('hidden');
+                    });
+                    const activeContent = document.getElementById(tabId);
+                    if (activeContent) {
+                        activeContent.classList.remove('hidden');
+                    }
+                });
+            });
+
+            // 产品选择变化时更新单价
+            const purchaseProductSelect = document.getElementById('purchase-product');
+            if (purchaseProductSelect) {
+                purchaseProductSelect.addEventListener('change', function() {
+                    const productName = this.value;
+                    const unitPriceInput = document.getElementById('purchase-unit-price');
+                    
+                    console.log('产品选择变化:', productName);
+                    
+                    // 清空之前的值
+                    unitPriceInput.value = '';
+                    
+                    if (productName) {
+                        // 首先尝试从costRecords.accessory中查找
+                        if (costRecords && costRecords.accessory) {
+                            console.log('在costRecords.accessory中查找产品');
+                            const product = costRecords.accessory.find(item => item.name === productName);
+                            if (product) {
+                                const price = product.cost || product.price || product.amount || 0;
+                                unitPriceInput.value = price;
+                                console.log('找到产品价格:', price);
+                                updateTotalPrice();
+                                return;
+                            }
+                        }
+                        
+                        // 如果没找到，尝试从其他成本类型中查找
+                        if (costRecords) {
+                            for (const type in costRecords) {
+                                if (type !== 'accessory' && Array.isArray(costRecords[type])) {
+                                    console.log(`在costRecords.${type}中查找产品`);
+                                    const product = costRecords[type].find(item => item.name === productName);
+                                    if (product) {
+                                        const price = product.cost || product.price || product.amount || 0;
+                                        unitPriceInput.value = price;
+                                        console.log('找到产品价格:', price);
+                                        updateTotalPrice();
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        console.log('未找到产品价格');
+                    }
+                });
+            }
+
+            // 数量变化时更新总价
+            const quantityInput = document.getElementById('purchase-quantity');
+            if (quantityInput) {
+                quantityInput.addEventListener('input', updateTotalPrice);
+            }
+
+            // 保存采购记录
+            const savePurchaseBtn = document.getElementById('save-purchase-btn');
+            if (savePurchaseBtn) {
+                savePurchaseBtn.addEventListener('click', savePurchase);
+            }
+
+            // 管理供应商按钮
+            const manageSuppliersBtn = document.getElementById('manage-suppliers-btn');
+            if (manageSuppliersBtn) {
+                manageSuppliersBtn.addEventListener('click', function() {
+                    renderSuppliersList();
+                    document.getElementById('supplier-management-modal').classList.remove('hidden');
+                });
+            }
+
+            // 关闭供应商管理模态框
+            const closeSupplierModal = document.getElementById('close-supplier-modal');
+            if (closeSupplierModal) {
+                closeSupplierModal.addEventListener('click', function() {
+                    document.getElementById('supplier-management-modal').classList.add('hidden');
+                });
+            }
+
+            const closeSupplierBtn = document.getElementById('close-supplier-btn');
+            if (closeSupplierBtn) {
+                closeSupplierBtn.addEventListener('click', function() {
+                    document.getElementById('supplier-management-modal').classList.add('hidden');
+                });
+            }
+
+            // 添加供应商
+            const addSupplierBtn = document.getElementById('add-supplier-btn');
+            if (addSupplierBtn) {
+                addSupplierBtn.addEventListener('click', addSupplier);
+            }
+
+            // 关闭编辑采购记录模态框
+            const closeEditPurchaseModal = document.getElementById('close-edit-purchase-modal');
+            if (closeEditPurchaseModal) {
+                closeEditPurchaseModal.addEventListener('click', function() {
+                    document.getElementById('edit-purchase-modal').classList.add('hidden');
+                });
+            }
+
+            const cancelEditPurchaseBtn = document.getElementById('cancel-edit-purchase-btn');
+            if (cancelEditPurchaseBtn) {
+                cancelEditPurchaseBtn.addEventListener('click', function() {
+                    document.getElementById('edit-purchase-modal').classList.add('hidden');
+                });
+            }
+
+            // 保存编辑的采购记录
+            const saveEditPurchaseBtn = document.getElementById('save-edit-purchase-btn');
+            if (saveEditPurchaseBtn) {
+                saveEditPurchaseBtn.addEventListener('click', saveEditPurchase);
+            }
+
+            // 删除确认模态框事件
+            const closeDeleteConfirmModal = document.getElementById('close-delete-confirm-modal');
+            if (closeDeleteConfirmModal) {
+                closeDeleteConfirmModal.addEventListener('click', cancelDelete);
+            }
+            
+            const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+            if (cancelDeleteBtn) {
+                cancelDeleteBtn.addEventListener('click', cancelDelete);
+            }
+            
+            const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+            if (confirmDeleteBtn) {
+                confirmDeleteBtn.addEventListener('click', confirmDelete);
+            }
+
+            // 查询按钮
+            const searchFilterBtn = document.getElementById('search-filter-btn');
+            if (searchFilterBtn) {
+                searchFilterBtn.addEventListener('click', queryPurchaseData);
+            }
+
+            // 重置按钮
+            const resetFilterBtn = document.getElementById('reset-filter-btn');
+            if (resetFilterBtn) {
+                resetFilterBtn.addEventListener('click', resetFilter);
+            }
+
+            // 导出Excel按钮
+            const exportExcelBtn = document.getElementById('export-excel-btn');
+            if (exportExcelBtn) {
+                exportExcelBtn.addEventListener('click', exportPurchaseDataToExcel);
+            }
+
+            // 切换未付金额可见性
+            const toggleUnpaidVisibility = document.getElementById('toggle-unpaid-visibility');
+            if (toggleUnpaidVisibility) {
+                toggleUnpaidVisibility.addEventListener('click', function() {
+                    const icon = this.querySelector('i');
+                    const unpaidAmount = document.getElementById('unpaid-amount');
+                    
+                    if (icon.classList.contains('fa-eye-slash')) {
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                        unpaidAmount.style.visibility = 'hidden';
+                    } else {
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                        unpaidAmount.style.visibility = 'visible';
+                    }
+                });
+            }
+
+            // 设置默认日期为今天
+            const purchaseDateInput = document.getElementById('purchase-date');
+            if (purchaseDateInput) {
+                purchaseDateInput.value = new Date().toISOString().split('T')[0];
+            }
+        });
+
+        // 更新总价
+        function updateTotalPrice() {
+            const quantity = parseInt(document.getElementById('purchase-quantity').value) || 0;
+            const unitPrice = parseFloat(document.getElementById('purchase-unit-price').value) || 0;
+            const totalPrice = quantity * unitPrice;
+            
+            document.getElementById('purchase-total-price').value = totalPrice.toFixed(2);
+        }
+
+        // 当切换到采购管理标签时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    if (tabId === 'purchase-management') {
+                        console.log('=== 切换到采购管理标签 ===');
+                        initPurchaseManagement();
+                    }
+                });
+            });
+            
+            // 批量付款模态框事件绑定
+            const paymentCancelBtn = document.getElementById('payment-cancel-btn');
+            const paymentConfirmBtn = document.getElementById('payment-confirm-btn');
+            
+            if (paymentCancelBtn) {
+                paymentCancelBtn.addEventListener('click', cancelBatchPayment);
+            }
+            
+            if (paymentConfirmBtn) {
+                paymentConfirmBtn.addEventListener('click', confirmBatchPayment);
+            }
+        });
+
+        // 生成采购编码函数
+        function generatePurchaseCode() {
+            // 生成首位大写字母 (A-Z)
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const firstChar = letters.charAt(Math.floor(Math.random() * letters.length));
+            
+            // 生成4位数字 (0000-9999)
+            const numbers = Math.floor(1000 + Math.random() * 9000).toString();
+            
+            return firstChar + numbers;
+        }
+        
+        // 确保所有采购记录都有编码
+        function ensureAllPurchasesHaveCodes() {
+            if (!purchaseData || !purchaseData.purchases) {
+                return;
+            }
+            
+            let hasChanges = false;
+            
+            purchaseData.purchases.forEach(purchase => {
+                if (!purchase.code) {
+                    purchase.code = generatePurchaseCode();
+                    hasChanges = true;
+                }
+            });
+            
+            if (hasChanges) {
+                savePurchaseData();
+                console.log('已为所有采购记录生成编码');
+            }
+        }
+        
+        // 批量操作相关函数
+        function toggleSelectAllPurchases() {
+            const selectAllCheckbox = document.getElementById('select-all-purchases');
+            const checkboxes = document.querySelectorAll('.purchase-checkbox');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+            
+            updateBatchActions();
+        }
+
+        function updateBatchActions() {
+            const checkboxes = document.querySelectorAll('.purchase-checkbox:checked');
+            const batchActions = document.getElementById('batch-actions');
+            const selectAllCheckbox = document.getElementById('select-all-purchases');
+            
+            // 更新批量操作按钮的显示状态
+            if (checkboxes.length > 0) {
+                batchActions.classList.remove('hidden');
+            } else {
+                batchActions.classList.add('hidden');
+            }
+            
+            // 更新全选复选框的状态
+            const allCheckboxes = document.querySelectorAll('.purchase-checkbox');
+            selectAllCheckbox.checked = allCheckboxes.length > 0 && checkboxes.length === allCheckboxes.length;
+        }
+
+        // 批量删除采购记录
+        let batchDeleteCooldown = false;
+        
+        // 显示批量付款确认模态框
+        function showBatchPaymentConfirm() {
+            const paymentAmountInput = document.getElementById('batch-payment-amount');
+            const paymentAmount = parseFloat(paymentAmountInput.value);
+            
+            // 验证输入金额
+            if (isNaN(paymentAmount) || paymentAmount <= 0) {
+                showToast('提示', '请输入有效的付款金额', 'warning');
+                paymentAmountInput.focus();
+                return;
+            }
+            
+            // 获取当前显示在界面上的采购记录
+            const visiblePurchaseRows = document.querySelectorAll('#purchase-data-list tr');
+            if (visiblePurchaseRows.length === 0) {
+                showToast('提示', '当前没有可付款的采购记录', 'info');
+                return;
+            }
+            
+            // 收集当前显示的采购记录ID
+            const visiblePurchaseIds = [];
+            visiblePurchaseRows.forEach(row => {
+                const checkbox = row.querySelector('.purchase-checkbox');
+                if (checkbox) {
+                    const index = parseInt(checkbox.value);
+                    if (!isNaN(index) && index >= 0 && index < purchaseData.purchases.length) {
+                        visiblePurchaseIds.push(purchaseData.purchases[index].id);
+                    }
+                }
+            });
+            
+            if (visiblePurchaseIds.length === 0) {
+                showToast('提示', '当前没有可付款的采购记录', 'info');
+                return;
+            }
+            
+            // 从所有采购记录中筛选出当前显示的记录
+            let visiblePurchases = purchaseData.purchases.filter(purchase => 
+                visiblePurchaseIds.includes(purchase.id)
+            );
+            
+            // 筛选出有待付金额的记录
+            let purchasesWithRemaining = visiblePurchases.filter(purchase => {
+                const remaining = parseFloat(purchase.totalPrice) - parseFloat(purchase.paidAmount || 0);
+                return remaining > 0;
+            });
+            
+            // 按时间排序（最早的在前），确保优先支付最早的待付记录
+            purchasesWithRemaining.sort((a, b) => {
+                // 首先按日期排序（最早的在前）
+                const dateCompare = new Date(a.date) - new Date(b.date);
+                if (dateCompare !== 0) {
+                    return dateCompare;
+                }
+                // 如果日期相同，按创建时间排序（最早的在前）
+                return new Date(a.createdAt) - new Date(b.createdAt);
+            });
+            
+            // 计算当前显示记录的待付金额总和
+            const totalRemainingAmount = purchasesWithRemaining.reduce((total, purchase) => {
+                const remaining = parseFloat(purchase.totalPrice) - parseFloat(purchase.paidAmount || 0);
+                return total + remaining;
+            }, 0);
+            
+            // 检查是否有可付款的记录
+            if (totalRemainingAmount === 0) {
+                showToast('提示', '当前显示的采购记录中没有待付金额', 'info');
+                return;
+            }
+            
+            // 检查付款金额是否超过当前显示记录的待付金额总和
+            if (paymentAmount > totalRemainingAmount) {
+                showToast('提示', `付款金额不能超过当前显示记录的待付金额总和 (¥${totalRemainingAmount.toFixed(2)})`, 'warning');
+                return;
+            }
+            
+            // 检查所有待付款记录是否属于同一个供应商
+            if (purchasesWithRemaining.length > 1) {
+                const firstSupplier = purchasesWithRemaining[0].supplier;
+                const allSameSupplier = purchasesWithRemaining.every(purchase => purchase.supplier === firstSupplier);
+                
+                if (!allSameSupplier) {
+                    showToast('提示', '批量付款单次只能支付给一个供应商，请筛选后再试', 'warning');
+                    return;
+                }
+            }
+            
+            // 检查所有待付款记录是否属于同一个供应商
+            if (purchasesWithRemaining.length > 1) {
+                const firstSupplier = purchasesWithRemaining[0].supplier;
+                const allSameSupplier = purchasesWithRemaining.every(purchase => purchase.supplier === firstSupplier);
+                
+                if (!allSameSupplier) {
+                    showToast('提示', '批量付款单次只能支付给一个供应商，请筛选后再试', 'warning');
+                    return;
+                }
+            }
+            
+            // 计算预计可以应用到的记录数和详细付款计划
+            let applicableRecords = 0;
+            let remainingPayment = paymentAmount;
+            const paymentPlan = [];
+            
+            for (let i = 0; i < purchasesWithRemaining.length && remainingPayment > 0; i++) {
+                const purchase = purchasesWithRemaining[i];
+                const totalPrice = parseFloat(purchase.totalPrice);
+                const currentPaid = parseFloat(purchase.paidAmount || 0);
+                const remaining = totalPrice - currentPaid;
+                
+                if (remaining > 0) {
+                    applicableRecords++;
+                    let paymentForThisRecord = 0;
+                    
+                    if (remainingPayment >= remaining) {
+                        paymentForThisRecord = remaining;
+                        remainingPayment -= remaining;
+                    } else {
+                        paymentForThisRecord = remainingPayment;
+                        remainingPayment = 0;
+                    }
+                    
+                    paymentPlan.push({
+                        productName: purchase.productName || purchase.product,
+                        code: purchase.code,
+                        currentPaid: currentPaid,
+                        paymentAmount: paymentForThisRecord,
+                        newPaid: currentPaid + paymentForThisRecord,
+                        totalPrice: totalPrice
+                    });
+                }
+            }
+            
+            // 更新模态框内容
+            document.getElementById('payment-amount-display').textContent = `¥${paymentAmount.toFixed(2)}`;
+            document.getElementById('payment-count-display').textContent = `${applicableRecords} 条记录`;
+            
+            // 显示付款计划详情
+            const paymentDetailsHtml = paymentPlan.map(plan => `
+                <div class="flex justify-between items-center py-1 border-b border-gray-100 last:border-0">
+                    <div>
+                        <p class="text-sm font-medium text-gray-800">${plan.productName || '未知产品'}</p>
+                        <p class="text-xs text-gray-500">编码: ${plan.code}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-semibold text-green-600">+¥${plan.paymentAmount.toFixed(2)}</p>
+                        <p class="text-xs text-gray-500">
+                            已付: ¥${plan.currentPaid.toFixed(2)} → ¥${plan.newPaid.toFixed(2)}<br>
+                            待付: ¥${(plan.totalPrice - plan.currentPaid).toFixed(2)} → ¥${(plan.totalPrice - plan.newPaid).toFixed(2)}
+                        </p>
+                    </div>
+                </div>
+            `).join('');
+            
+            // 添加或更新付款详情容器
+            let detailsContainer = document.getElementById('payment-details-container');
+            if (!detailsContainer) {
+                detailsContainer = document.createElement('div');
+                detailsContainer.id = 'payment-details-container';
+                detailsContainer.className = 'mt-4 max-h-40 overflow-y-auto';
+                document.querySelector('#batch-payment-confirm-modal .bg-gray-50').appendChild(detailsContainer);
+            }
+            detailsContainer.innerHTML = paymentDetailsHtml;
+            
+            // 显示模态框
+            document.getElementById('batch-payment-confirm-modal').classList.remove('hidden');
+        }
+        
+        // 取消批量付款
+        function cancelBatchPayment() {
+            document.getElementById('batch-payment-confirm-modal').classList.add('hidden');
+        }
+        
+        // 确认批量付款
+        function confirmBatchPayment() {
+            // 隐藏模态框
+            document.getElementById('batch-payment-confirm-modal').classList.add('hidden');
+            
+            // 执行实际的付款操作
+            batchPayment();
+        }
+        
+        // 批量付款功能 - 优化版：仅处理当前显示的数据，并保持筛选状态
+        function batchPayment() {
+            const paymentAmountInput = document.getElementById('batch-payment-amount');
+            const paymentAmount = parseFloat(paymentAmountInput.value);
+            
+            // 验证输入金额
+            if (isNaN(paymentAmount) || paymentAmount <= 0) {
+                showToast('提示', '请输入有效的付款金额', 'warning');
+                paymentAmountInput.focus();
+                return;
+            }
+            
+            // 获取当前显示在界面上的采购记录
+            const visiblePurchaseRows = document.querySelectorAll('#purchase-data-list tr');
+            if (visiblePurchaseRows.length === 0) {
+                showToast('提示', '当前没有可付款的采购记录', 'info');
+                return;
+            }
+            
+            // 收集当前显示的采购记录ID
+            const visiblePurchaseIds = [];
+            visiblePurchaseRows.forEach(row => {
+                const checkbox = row.querySelector('.purchase-checkbox');
+                if (checkbox) {
+                    const index = parseInt(checkbox.value);
+                    if (!isNaN(index) && index >= 0 && index < purchaseData.purchases.length) {
+                        visiblePurchaseIds.push(purchaseData.purchases[index].id);
+                    }
+                }
+            });
+            
+            if (visiblePurchaseIds.length === 0) {
+                showToast('提示', '当前没有可付款的采购记录', 'info');
+                return;
+            }
+            
+            // 从所有采购记录中筛选出当前显示的记录
+            let visiblePurchases = purchaseData.purchases.filter(purchase => 
+                visiblePurchaseIds.includes(purchase.id)
+            );
+            
+            // 筛选出有待付金额的记录
+            let purchasesWithRemaining = visiblePurchases.filter(purchase => {
+                const remaining = parseFloat(purchase.totalPrice) - parseFloat(purchase.paidAmount || 0);
+                return remaining > 0;
+            });
+            
+            // 按时间排序（最早的在前），确保优先支付最早的待付记录
+            purchasesWithRemaining.sort((a, b) => {
+                // 首先按日期排序（最早的在前）
+                const dateCompare = new Date(a.date) - new Date(b.date);
+                if (dateCompare !== 0) {
+                    return dateCompare;
+                }
+                // 如果日期相同，按创建时间排序（最早的在前）
+                return new Date(a.createdAt) - new Date(b.createdAt);
+            });
+            
+            // 计算当前显示记录的待付金额总和
+            const totalRemainingAmount = purchasesWithRemaining.reduce((total, purchase) => {
+                const remaining = parseFloat(purchase.totalPrice) - parseFloat(purchase.paidAmount || 0);
+                return total + remaining;
+            }, 0);
+            
+            // 检查是否有可付款的记录
+            if (totalRemainingAmount === 0) {
+                showToast('提示', '当前显示的采购记录中没有待付金额', 'info');
+                return;
+            }
+            
+            // 检查付款金额是否超过当前显示记录的待付金额总和
+            if (paymentAmount > totalRemainingAmount) {
+                showToast('提示', `付款金额不能超过当前显示记录的待付金额总和 (¥${totalRemainingAmount.toFixed(2)})`, 'warning');
+                return;
+            }
+            
+            // 检查所有待付款记录是否属于同一个供应商
+            if (purchasesWithRemaining.length > 1) {
+                const firstSupplier = purchasesWithRemaining[0].supplier;
+                const allSameSupplier = purchasesWithRemaining.every(purchase => purchase.supplier === firstSupplier);
+                
+                if (!allSameSupplier) {
+                    showToast('提示', '批量付款单次只能支付给一个供应商，请筛选后再试', 'warning');
+                    return;
+                }
+            }
+            
+            // 检查所有待付款记录是否属于同一个供应商
+            if (purchasesWithRemaining.length > 1) {
+                const firstSupplier = purchasesWithRemaining[0].supplier;
+                const allSameSupplier = purchasesWithRemaining.every(purchase => purchase.supplier === firstSupplier);
+                
+                if (!allSameSupplier) {
+                    showToast('提示', '批量付款单次只能支付给一个供应商，请筛选后再试', 'warning');
+                    return;
+                }
+            }
+            
+            let remainingPayment = paymentAmount;
+            let paymentsApplied = 0;
+            const paymentDetails = [];
+            
+            // 依次处理每条有待付金额的记录，优先处理最早的记录
+            for (let i = 0; i < purchasesWithRemaining.length && remainingPayment > 0; i++) {
+                const purchase = purchasesWithRemaining[i];
+                const totalPrice = parseFloat(purchase.totalPrice);
+                const currentPaid = parseFloat(purchase.paidAmount || 0);
+                const remaining = totalPrice - currentPaid;
+                
+                if (remaining > 0) {
+                    if (remainingPayment >= remaining) {
+                        // 全额支付当前记录
+                        const paymentAmountForThisRecord = remaining;
+                        purchase.paidAmount = totalPrice.toFixed(2);
+                        remainingPayment -= remaining;
+                        paymentsApplied++;
+                        
+                        // 记录本次付款详情（只记录实际发生付款的记录）
+                        paymentDetails.push({
+                            purchaseId: purchase.id,
+                            productName: purchase.productName || purchase.product || '未知产品',
+                            product: purchase.productName || purchase.product || '未知产品',
+                            code: purchase.code || '-',
+                            supplier: purchase.supplier || '-',
+                            originalPaid: currentPaid.toFixed(2),
+                            paymentAmount: paymentAmountForThisRecord.toFixed(2),
+                            newPaid: totalPrice.toFixed(2),
+                            paidAmount: paymentAmountForThisRecord.toFixed(2),
+                            totalPrice: totalPrice.toFixed(2),
+                            total: totalPrice.toFixed(2)
+                        });
+                    } else {
+                        // 部分支付当前记录
+                        const paymentAmountForThisRecord = remainingPayment;
+                        purchase.paidAmount = (currentPaid + remainingPayment).toFixed(2);
+                        remainingPayment = 0;
+                        paymentsApplied++;
+                        
+                        // 记录本次付款详情（只记录实际发生付款的记录）
+                        paymentDetails.push({
+                            purchaseId: purchase.id,
+                            productName: purchase.productName || purchase.product || '未知产品',
+                            product: purchase.productName || purchase.product || '未知产品',
+                            code: purchase.code || '-',
+                            supplier: purchase.supplier || '-',
+                            originalPaid: currentPaid.toFixed(2),
+                            paymentAmount: paymentAmountForThisRecord.toFixed(2),
+                            newPaid: (currentPaid + paymentAmountForThisRecord).toFixed(2),
+                            paidAmount: paymentAmountForThisRecord.toFixed(2),
+                            totalPrice: totalPrice.toFixed(2),
+                            total: totalPrice.toFixed(2)
+                        });
+                    }
+                }
+            }
+            
+            // 保存更新后的采购记录
+            savePurchaseData();
+            
+            // 创建批量付款记录
+            const actualPaymentAmount = paymentDetails.reduce((sum, detail) => {
+                return sum + parseFloat(detail.paymentAmount);
+            }, 0);
+            
+            const paymentRecord = {
+                id: Date.now().toString(),
+                type: '批量付款',
+                amount: actualPaymentAmount,
+                date: new Date().toISOString().split('T')[0],
+                createdAt: new Date().toISOString(),
+                details: paymentDetails
+            };
+            purchaseData.paymentRecords.push(paymentRecord);
+            savePurchaseData();
+            
+            // 保存当前的筛选状态
+            const currentFilters = {
+                product: document.getElementById('filter-product')?.value || '',
+                supplier: document.getElementById('filter-supplier')?.value || '',
+                search: document.getElementById('filter-search')?.value || '',
+                paymentStatus: document.getElementById('filter-payment-status')?.value || '',
+                startDate: document.getElementById('filter-start-date')?.value || '',
+                endDate: document.getElementById('filter-end-date')?.value || ''
+            };
+            
+            // 重新渲染界面
+            renderPurchaseRecords();
+            
+            // 检查是否有活跃的筛选条件
+            const hasActiveFilters = Object.values(currentFilters).some(value => value !== '');
+            
+            if (hasActiveFilters) {
+                // 如果有筛选条件，重新应用筛选
+                queryPurchaseData();
+            } else {
+                // 如果没有筛选条件，显示所有数据
+                renderPurchaseData();
+                updateStatistics();
+            }
+            
+            // 清空输入框
+            paymentAmountInput.value = '';
+            
+            // 显示成功提示
+            showToast('成功', `成功支付 ¥${actualPaymentAmount.toFixed(2)}，已应用到 ${paymentsApplied} 条采购记录`, 'success');
+            
+            // 无论当前在哪个标签页，都刷新付款记录列表，确保数据同步
+            if (typeof renderPaymentRecords === 'function') {
+                renderPaymentRecords();
+                updatePaymentStatistics();
+            }
+        }
+        
+        function batchDeletePurchases() {
+            // 检查冷却时间
+            if (batchDeleteCooldown) {
+                showToast('提示', '批量删除操作需要等待3秒冷却时间', 'info');
+                return;
+            }
+            
+            const checkboxes = document.querySelectorAll('.purchase-checkbox:checked');
+            const selectedIndices = Array.from(checkboxes).map(cb => parseInt(cb.value));
+            
+            if (selectedIndices.length === 0) {
+                showToast('提示', '请选择要删除的采购记录', 'info');
+                return;
+            }
+            
+            // 创建并显示顶部倒计时提示框（强制应用正确样式）
+            const countdownToast = document.createElement('div');
+            countdownToast.id = 'batch-delete-countdown-toast';
+            countdownToast.style.cssText = 'position: fixed !important; top: 1rem !important; right: 1rem !important; background-color: #f97316 !important; color: white !important; padding: 0.75rem 1.25rem !important; border-radius: 0.75rem !important; z-index: 9999 !important; display: flex !important; align-items: center !important; font-size: 0.875rem !important; box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important; font-weight: 600 !important; margin: 0 !important; border: none !important; outline: none !important;';
+            countdownToast.innerHTML = '<i class="fa fa-clock-o mr-2"></i> 删除冷却中，3秒后可操作';
+            document.body.appendChild(countdownToast);
+            
+            // 倒计时更新
+            let countdown = 3;
+            const timer = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    countdownToast.innerHTML = `<i class="fa fa-clock-o mr-2"></i> 删除冷却中，${countdown}秒后可操作`;
+                } else {
+                    clearInterval(timer);
+                }
+            }, 1000);
+            
+            // 设置冷却状态
+            batchDeleteCooldown = true;
+            showToast('提示', '请等待3秒后确认批量删除...', 'info');
+            
+            // 3秒后显示确认删除模态框
+            setTimeout(() => {
+                // 显示删除确认模态框
+                openDeleteConfirmModal(
+                    '确认批量删除',
+                    `确定要删除选中的 ${selectedIndices.length} 条采购记录吗？此操作无法撤销。`,
+                    function() {
+                        // 按索引降序排序，从后往前删除，避免索引错乱
+                        selectedIndices.sort((a, b) => b - a).forEach(index => {
+                            purchaseData.purchases.splice(index, 1);
+                        });
+                        
+                        savePurchaseData();
+                        
+                        // 更新界面
+                        renderPurchaseRecords();
+                        renderPurchaseData();
+                        updateStatistics();
+                        
+                        // 隐藏批量操作按钮
+                        document.getElementById('batch-actions').classList.add('hidden');
+                        document.getElementById('select-all-purchases').checked = false;
+                        
+                        showToast('成功', `已删除 ${selectedIndices.length} 条采购记录`, 'success');
+                    }
+                );
+                
+                // 移除顶部倒计时提示框
+                const existingCountdownToast = document.getElementById('batch-delete-countdown-toast');
+                if (existingCountdownToast) {
+                    document.body.removeChild(existingCountdownToast);
+                }
+                batchDeleteCooldown = false; // 冷却时间结束
+            }, 3000);
+        }
+    </script></main></body></html>
