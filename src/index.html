@@ -8447,6 +8447,7 @@ ${shopsMap[link.shopId]}
                         <option value="件">件</option>
                         <option value="只">只</option>
                         <option value="支">支</option>
+                        <option value="根">根</option>
                         <option value="张">张</option>
                         <option value="颗">颗</option>
                         <option value="粒">粒</option>
@@ -12636,12 +12637,12 @@ ${shopsMap[link.shopId]}
                                 <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                     <button class="btn btn-outline-primary btn-sm mr-2 edit-cost" 
                                         data-type="${costType}" 
-                                        data-index="${index}">
+                                        data-index="${originalIndex}">
                                         <i class="fa fa-pencil"></i> 编辑
                                     </button>
                                     <button class="btn btn-outline-danger btn-sm delete-cost" 
                                         data-type="${costType}" 
-                                        data-index="${index}">
+                                        data-index="${originalIndex}">
                                         <i class="fa fa-trash"></i> 删除
                                     </button>
                                 </div>
@@ -17298,6 +17299,19 @@ ${shopsMap[link.shopId]}
             
             if (savedCostCategories) {
                 costCategories = JSON.parse(savedCostCategories);
+                
+                // 清理重复的分类（基于名称去重）
+                Object.keys(costCategories).forEach(type => {
+                    const seenNames = new Set();
+                    costCategories[type] = costCategories[type].filter(cat => {
+                        const name = typeof cat === 'string' ? cat : cat.name;
+                        if (seenNames.has(name)) {
+                            return false;
+                        }
+                        seenNames.add(name);
+                        return true;
+                    });
+                });
             }
             
             // 确保成本记录中的分类字段存在
@@ -18600,7 +18614,7 @@ ${shopsMap[link.shopId]}
                 code: generatePurchaseCode(), // 自动生成唯一编码
                 product,
                 supplier,
-                date: date.split('T')[0], // 提取日期部分
+                date: date, // 保存完整的日期时间信息
                 quantity,
                 unitPrice,
                 totalPrice,
@@ -18678,8 +18692,8 @@ ${shopsMap[link.shopId]}
                 // 设置日期时间（合并日期和时间戳）
                 const dateTimeInput = document.getElementById('edit-purchase-date');
                 if (dateTimeInput) {
-                    // 如果有时间戳，使用时间戳；否则使用日期
-                    const dateToUse = purchase.createdAt ? new Date(purchase.createdAt) : new Date(purchase.date);
+                    // 始终使用采购日期，而不是创建时间
+                    const dateToUse = new Date(purchase.date);
                     
                     // 确保正确显示本地时间，避免时区偏移问题
                     const year = dateToUse.getFullYear();
