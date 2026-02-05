@@ -729,6 +729,25 @@
     </div>
 
     <!-- Edit Product Modal -->
+    <!-- 确认清空回收站模态框 -->
+    <div id="confirm-empty-recycle-bin-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <div class="text-center mb-6">
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-500 mb-4">
+                        <i class="fa fa-exclamation-triangle text-2xl"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">确认清空回收站？</h3>
+                    <p class="text-gray-600">此操作将永久删除回收站中的所有项目，无法恢复。</p>
+                </div>
+                <div class="flex justify-center space-x-3">
+                    <button id="cancel-empty-recycle-bin" class="btn btn-secondary">取消</button>
+                    <button id="confirm-empty-recycle-bin" class="btn btn-danger">确认清空</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="edit-product-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden overflow-auto" style="z-index: 1000;">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div class="border-b border-gray-200 px-6 py-4">
@@ -6879,9 +6898,9 @@ ${shopsMap[link.shopId]}
                                 </div>
                                 
                                 <div>
-                                    <label for="product-id-search" class="block text-sm font-medium text-gray-700 mb-1">商品ID搜索</label>
+                                    <label for="product-id-search" class="block text-sm font-medium text-gray-700 mb-1">商品ID/规格编码搜索</label>
                                     <div class="flex space-x-2">
-                                        <input type="text" id="product-id-search" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400 flex-1" placeholder="输入商品ID...">
+                                        <input type="text" id="product-id-search" class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400 flex-1" placeholder="输入商品ID或规格编码...">
                                         <button id="search-product-btn" class="btn btn-secondary flex items-center space-x-1">
                                             <i class="fa fa-search"></i>
                                             <span>搜索</span>
@@ -6916,7 +6935,7 @@ ${shopsMap[link.shopId]}
                                     <div class="p-3 border-b border-gray-200">
                                         <h4 class="font-medium text-gray-700 flex items-center justify-between">
                                             <span>回收站</span>
-                                            <button id="empty-recycle-bin" class="text-sm text-danger hover:text-danger/80">清空</button>
+                                            <button id="empty-recycle-bin" class="text-sm text-danger hover:text-danger/80" onclick="showEmptyRecycleBinConfirm()">清空</button>
                                         </h4>
                                         <p class="text-xs text-gray-500">点击项目可恢复，或选择彻底删除</p>
                                     </div>
@@ -9702,15 +9721,28 @@ ${shopsMap[link.shopId]}
             // 点击清空回收站
             emptyRecycleBinBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                if (recycleBin.length > 0) {
-                    if (confirm('确定要清空回收站吗？此操作不可撤销。')) {
-                        recycleBin = [];
-                        localStorage.setItem('recycleBin', JSON.stringify(recycleBin));
-                        updateRecycleBinCount();
-                        renderRecycleBin();
-                        showToast('成功', '回收站已清空', 'success');
-                    }
+                if (recycleBin.length === 0) {
+                    showToast('提示', '回收站为空', 'info');
+                    return;
                 }
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.remove('hidden');
+            });
+            
+            // 取消清空回收站
+            document.getElementById('cancel-empty-recycle-bin').addEventListener('click', function() {
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.add('hidden');
+            });
+            
+            // 确认清空回收站
+            document.getElementById('confirm-empty-recycle-bin').addEventListener('click', function() {
+                // 清空回收站
+                recycleBin = [];
+                localStorage.setItem('recycleBin', JSON.stringify(recycleBin));
+                updateRecycleBinCount();
+                renderRecycleBin();
+                
+                showToast('成功', '回收站已清空', 'success');
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.add('hidden');
             });
             
             // 点击其他地方隐藏回收站列表
@@ -10227,6 +10259,14 @@ ${shopsMap[link.shopId]}
         
         // 计算净利润
         function calculateProfit() {
+            // 保存当前的广告费数据
+            const advertisingFees = {};
+            if (productData && productData.length > 0) {
+                productData.forEach(product => {
+                    advertisingFees[product.id] = product.advertisingFee || 0;
+                });
+            }
+            
             // 清零快递续重费
             document.getElementById('additional-shipping-fee').value = '';
             
@@ -10378,6 +10418,37 @@ ${shopsMap[link.shopId]}
                     const newCalculationSkus = productData.reduce((sum, product) => {
                         return sum + Object.values(product.skus).filter(sku => sku.isNewCalculation).length;
                     }, 0);
+                    
+                    // 恢复广告费数据
+                    if (Object.keys(advertisingFees).length > 0) {
+                        productData.forEach(product => {
+                            if (advertisingFees[product.id] !== undefined) {
+                                product.advertisingFee = advertisingFees[product.id];
+                                // 重新计算净利润
+                                const additionalShippingFee = parseFloat(document.getElementById('additional-shipping-fee').value) || 0;
+                                if (additionalShippingFee > 0) {
+                                    const totalQuantity = productData.reduce((sum, p) => sum + p.totalQuantity, 0);
+                                    if (totalQuantity > 0) {
+                                        const allocatedShippingFee = (product.totalQuantity / totalQuantity) * additionalShippingFee;
+                                        product.allocatedShippingFee = allocatedShippingFee;
+                                        product.netProfit = product.totalRevenue - product.totalCost - advertisingFees[product.id] - allocatedShippingFee;
+                                    } else {
+                                        product.allocatedShippingFee = 0;
+                                        product.netProfit = product.totalRevenue - product.totalCost - advertisingFees[product.id];
+                                    }
+                                } else {
+                                    product.allocatedShippingFee = 0;
+                                    product.netProfit = product.totalRevenue - product.totalCost - advertisingFees[product.id];
+                                }
+                            }
+                        });
+                        
+                        // 重新渲染结果以显示恢复的广告费
+                        renderResults();
+                        
+                        // 更新数据看板
+                        updateDashboard();
+                    }
                     
                     showToast('成功', `计算完成！共 ${totalSkus} 个SKU（新计算：${newCalculationSkus}个），其中 ${associatedSkus} 个已关联最新规格成本`, 'success');
                 } catch (error) {
@@ -10565,6 +10636,10 @@ ${shopsMap[link.shopId]}
                                         <p class="text-xs font-medium text-gray-600">净利润</p>
                                         <p class="text-2xl font-bold ${profitClass}">¥${product.netProfit.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                                     </div>
+                                <!-- 成本为0的警告图标 -->
+                                <div class="cost-warning-icon ${Object.values(product.skus).some(sku => sku.cost === 0) ? '' : 'hidden'}" title="存在成本为0的规格">
+                                    <i class="fa fa-exclamation-circle text-red-500 text-xl"></i>
+                                </div>
                                 </div>
                                 <button class="toggle-btn text-gray-500 hover:text-primary">
                                     <i class="fa fa-chevron-down"></i>
@@ -10654,9 +10729,10 @@ ${shopsMap[link.shopId]}
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-indigo-900 font-bold">${sku.quantity.toLocaleString()}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-indigo-800 font-semibold">¥${sku.revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-indigo-800 font-semibold">¥${avgPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right ${isSavedData ? 'text-emerald-600 font-bold' : 'text-indigo-600 font-semibold'}">
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right ${displayCost === 0 ? 'text-red-600 font-bold' : (isSavedData ? 'text-emerald-600 font-bold' : 'text-indigo-600 font-semibold')}">
                                 ¥${displayCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                 ${isSavedData ? '<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">已保存</span>' : ''}
+
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-right ${isSavedData ? 'text-emerald-600 font-bold' : 'text-indigo-600 font-semibold'}">¥${skuTotalCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                         </tr>
@@ -10727,8 +10803,50 @@ ${shopsMap[link.shopId]}
                             product.netProfit = product.totalRevenue - product.totalCost - value;
                         }
                         
-                        // 重新渲染结果
-                        renderResults();
+                        // 记录当前展开的卡片状态
+                        const expandedCards = new Set();
+                        document.querySelectorAll('.collapse-content:not(.hidden)').forEach(content => {
+                            const card = content.closest('.product-card');
+                            if (card) {
+                                const productId = card.querySelector('[data-product-id]')?.getAttribute('data-product-id') || 
+                                                card.querySelector('.update-advertising')?.getAttribute('data-product-id');
+                                if (productId) {
+                                    expandedCards.add(productId);
+                                }
+                            }
+                        });
+                        
+                        // 检查是否有筛选条件
+                        const shopFilter = document.getElementById('calculation-shop-filter');
+                        const profitStatusFilter = document.getElementById('profit-status-filter');
+                        const productIdSearch = document.getElementById('product-id-search');
+                        
+                        const hasActiveFilters = (shopFilter && shopFilter.value !== '') || 
+                                              (profitStatusFilter && profitStatusFilter.value !== '') ||
+                                              (productIdSearch && productIdSearch.value.trim() !== '');
+                        
+                        if (hasActiveFilters) {
+                            // 如果有筛选条件，重新应用筛选
+                            applyCalculationFilters();
+                        } else {
+                            // 如果没有筛选条件，直接重新渲染所有结果
+                            renderResults();
+                        }
+                        
+                        // 恢复之前展开的卡片状态
+                        setTimeout(() => {
+                            expandedCards.forEach(id => {
+                                const card = document.querySelector(`.product-card:has(.update-advertising[data-product-id="${id}"])`);
+                                if (card) {
+                                    const content = card.querySelector('.collapse-content');
+                                    const toggleBtn = card.querySelector('.toggle-btn i');
+                                    if (content && toggleBtn) {
+                                        content.classList.remove('hidden');
+                                        toggleBtn.className = 'fa fa-chevron-down';
+                                    }
+                                }
+                            });
+                        }, 100);
                         
                         // 更新数据看板
                         updateDashboard();
@@ -10956,15 +11074,28 @@ ${shopsMap[link.shopId]}
             // 点击清空回收站
             emptyRecycleBinBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                if (recycleBin.length > 0) {
-                    if (confirm('确定要清空回收站吗？此操作不可撤销。')) {
-                        recycleBin = [];
-                        localStorage.setItem('recycleBin', JSON.stringify(recycleBin));
-                        updateRecycleBinCount();
-                        renderRecycleBin();
-                        showToast('成功', '回收站已清空', 'success');
-                    }
+                if (recycleBin.length === 0) {
+                    showToast('提示', '回收站为空', 'info');
+                    return;
                 }
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.remove('hidden');
+            });
+            
+            // 取消清空回收站
+            document.getElementById('cancel-empty-recycle-bin').addEventListener('click', function() {
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.add('hidden');
+            });
+            
+            // 确认清空回收站
+            document.getElementById('confirm-empty-recycle-bin').addEventListener('click', function() {
+                // 清空回收站
+                recycleBin = [];
+                localStorage.setItem('recycleBin', JSON.stringify(recycleBin));
+                updateRecycleBinCount();
+                renderRecycleBin();
+                
+                showToast('成功', '回收站已清空', 'success');
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.add('hidden');
             });
             
             // 点击其他地方隐藏回收站列表
@@ -11597,7 +11728,7 @@ ${shopsMap[link.shopId]}
                                     // 显示成功提示
                                     showToast('成功', `已成功删除 ${selectedSkus.length} 个规格编码`, 'success');
                                     
-                                    // 重新计算产品利润
+                                    // 重新计算产品利润（现在calculateProfit函数内部会自动处理广告费数据的保存和恢复）
                                     if (typeof calculateProfit === 'function' && productData.length > 0) {
                                         calculateProfit();
                                     }
@@ -11713,7 +11844,7 @@ ${shopsMap[link.shopId]}
                             
                             showToast('成功', '规格成本已更新', 'success');
                             
-                            // 重新计算产品利润
+                            // 重新计算产品利润（现在calculateProfit函数内部会自动处理广告费数据的保存和恢复）
                             if (productData.length > 0) {
                                 calculateProfit();
                             }
@@ -12010,15 +12141,28 @@ ${shopsMap[link.shopId]}
             // 点击清空回收站
             emptyRecycleBinBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                if (recycleBin.length > 0) {
-                    if (confirm('确定要清空回收站吗？此操作不可撤销。')) {
-                        recycleBin = [];
-                        localStorage.setItem('recycleBin', JSON.stringify(recycleBin));
-                        updateRecycleBinCount();
-                        renderRecycleBin();
-                        showToast('成功', '回收站已清空', 'success');
-                    }
+                if (recycleBin.length === 0) {
+                    showToast('提示', '回收站为空', 'info');
+                    return;
                 }
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.remove('hidden');
+            });
+            
+            // 取消清空回收站
+            document.getElementById('cancel-empty-recycle-bin').addEventListener('click', function() {
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.add('hidden');
+            });
+            
+            // 确认清空回收站
+            document.getElementById('confirm-empty-recycle-bin').addEventListener('click', function() {
+                // 清空回收站
+                recycleBin = [];
+                localStorage.setItem('recycleBin', JSON.stringify(recycleBin));
+                updateRecycleBinCount();
+                renderRecycleBin();
+                
+                showToast('成功', '回收站已清空', 'success');
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.add('hidden');
             });
             
             // 点击其他地方隐藏回收站列表
@@ -13032,15 +13176,28 @@ ${shopsMap[link.shopId]}
             // 点击清空回收站
             emptyRecycleBinBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                if (recycleBin.length > 0) {
-                    if (confirm('确定要清空回收站吗？此操作不可撤销。')) {
-                        recycleBin = [];
-                        localStorage.setItem('recycleBin', JSON.stringify(recycleBin));
-                        updateRecycleBinCount();
-                        renderRecycleBin();
-                        showToast('成功', '回收站已清空', 'success');
-                    }
+                if (recycleBin.length === 0) {
+                    showToast('提示', '回收站为空', 'info');
+                    return;
                 }
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.remove('hidden');
+            });
+            
+            // 取消清空回收站
+            document.getElementById('cancel-empty-recycle-bin').addEventListener('click', function() {
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.add('hidden');
+            });
+            
+            // 确认清空回收站
+            document.getElementById('confirm-empty-recycle-bin').addEventListener('click', function() {
+                // 清空回收站
+                recycleBin = [];
+                localStorage.setItem('recycleBin', JSON.stringify(recycleBin));
+                updateRecycleBinCount();
+                renderRecycleBin();
+                
+                showToast('成功', '回收站已清空', 'success');
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.add('hidden');
             });
             
             // 点击其他地方隐藏回收站列表
@@ -13846,10 +14003,14 @@ ${shopsMap[link.shopId]}
                 filteredProducts = filteredProducts.filter(product => product.netProfit < 0);
             }
             
-            // 应用商品ID搜索
+            // 应用商品ID或规格编码搜索
             if (productIdSearch) {
                 filteredProducts = filteredProducts.filter(product => 
-                    product.id.toLowerCase().includes(productIdSearch.toLowerCase())
+                    product.id.toLowerCase().includes(productIdSearch.toLowerCase()) ||
+                    // 搜索商品的规格编码
+                    Object.values(product.skus).some(sku => 
+                        sku.code.toLowerCase().includes(productIdSearch.toLowerCase())
+                    )
                 );
             }
             
@@ -13920,9 +14081,32 @@ ${shopsMap[link.shopId]}
                 return;
             }
             
+            // 获取排序选择
+            const sortSelect = document.getElementById('results-sort');
+            const sortBy = sortSelect ? sortSelect.value : 'profit-desc';
+            
+            // 创建数据副本进行排序
+            const sortedData = [...filteredProducts];
+            
+            // 根据选择的排序方式进行排序
+            switch (sortBy) {
+                case 'profit-desc':
+                    sortedData.sort((a, b) => b.netProfit - a.netProfit);
+                    break;
+                case 'profit-asc':
+                    sortedData.sort((a, b) => a.netProfit - b.netProfit);
+                    break;
+                case 'quantity-desc':
+                    sortedData.sort((a, b) => b.totalQuantity - a.totalQuantity);
+                    break;
+                case 'quantity-asc':
+                    sortedData.sort((a, b) => a.totalQuantity - b.totalQuantity);
+                    break;
+            }
+            
             let html = '';
             
-            filteredProducts.forEach((product, index) => {
+            sortedData.forEach((product, index) => {
                 const profitPercentage = product.totalRevenue > 0 
                     ? ((product.netProfit / product.totalRevenue) * 100).toFixed(2) 
                     : '0.00';
@@ -13965,6 +14149,10 @@ ${shopsMap[link.shopId]}
                                         <p class="text-xs font-medium text-gray-600">净利润</p>
                                         <p class="text-2xl font-bold ${profitClass}">¥${product.netProfit.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                                     </div>
+                                <!-- 成本为0的警告图标 -->
+                                <div class="cost-warning-icon ${Object.values(product.skus).some(sku => sku.cost === 0) ? '' : 'hidden'}" title="存在成本为0的规格">
+                                    <i class="fa fa-exclamation-circle text-red-500 text-xl"></i>
+                                </div>
                                 </div>
                                 <button class="toggle-btn text-gray-500 hover:text-primary">
                                     <i class="fa fa-chevron-down"></i>
@@ -14000,17 +14188,7 @@ ${shopsMap[link.shopId]}
                                 </div>
                             </div>
                             
-                            <div class="mb-4">
-                                <label for="advertising-fee-filtered-${product.id}" class="block text-sm font-medium text-gray-700 mb-1">广告费 (元)</label>
-                                <div class="flex">
-                                    <input type="number" id="advertising-fee-filtered-${product.id}" 
-                                        class="input-field" step="0.01" min="0" 
-                                        value="${product.advertisingFee}" 
-                                        data-product-id="${product.id}">
-                                    <button class="btn btn-primary ml-2 update-advertising-filtered" 
-                                        data-product-id="${product.id}">更新</button>
-                                </div>
-                            </div>
+
                             
                             <div class="border-t-4 border-indigo-500 pt-6 mt-6 bg-gradient-to-b from-white to-indigo-50 rounded-2xl p-6 shadow-xl animate-fadeIn">
                                 <div class="flex items-center justify-between mb-6">
@@ -14064,9 +14242,10 @@ ${shopsMap[link.shopId]}
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-indigo-900 font-bold">${sku.quantity.toLocaleString()}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-indigo-800 font-semibold">¥${sku.revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-indigo-800 font-semibold">¥${avgPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right ${isSavedData ? 'text-emerald-600 font-bold' : 'text-indigo-600 font-semibold'}">
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right ${displayCost === 0 ? 'text-red-600 font-bold' : (isSavedData ? 'text-emerald-600 font-bold' : 'text-indigo-600 font-semibold')}">
                                 ¥${displayCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                 ${isSavedData ? '<span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">已保存</span>' : ''}
+
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-right ${isSavedData ? 'text-emerald-600 font-bold' : 'text-indigo-600 font-semibold'}">¥${skuTotalCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                         </tr>
@@ -14097,18 +14276,18 @@ ${shopsMap[link.shopId]}
             });
             
             // 移除之前的事件监听器，避免重复绑定
-            document.querySelectorAll('.update-advertising-filtered').forEach(btn => {
+            document.querySelectorAll('.update-advertising').forEach(btn => {
                 btn.replaceWith(btn.cloneNode(true));
             });
             
             // 添加广告费更新事件（筛选模式）
-            document.querySelectorAll('.update-advertising-filtered').forEach(btn => {
+            document.querySelectorAll('.update-advertising').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const productId = this.getAttribute('data-product-id');
-                    const input = document.getElementById(`advertising-fee-filtered-${productId}`);
+                    const input = document.getElementById(`advertising-fee-${productId}`);
                     
                     if (!input) {
-                        console.error(`输入框未找到: advertising-fee-filtered-${productId}`);
+                        console.error(`输入框未找到: advertising-fee-${productId}`);
                         showToast('错误', '输入框未找到', 'error');
                         return;
                     }
@@ -14137,8 +14316,36 @@ ${shopsMap[link.shopId]}
                             product.netProfit = product.totalRevenue - product.totalCost - value;
                         }
                         
+                        // 记录当前展开的卡片状态
+                        const expandedCards = new Set();
+                        document.querySelectorAll('.collapse-content:not(.hidden)').forEach(content => {
+                            const card = content.closest('.product-card');
+                            if (card) {
+                                const productId = card.querySelector('[data-product-id]')?.getAttribute('data-product-id') || 
+                                                card.querySelector('.update-advertising')?.getAttribute('data-product-id');
+                                if (productId) {
+                                    expandedCards.add(productId);
+                                }
+                            }
+                        });
+                        
                         // 重新应用筛选
                         applyCalculationFilters();
+                        
+                        // 恢复之前展开的卡片状态
+                        setTimeout(() => {
+                            expandedCards.forEach(id => {
+                                const card = document.querySelector(`.product-card:has(.update-advertising[data-product-id="${id}"])`);
+                                if (card) {
+                                    const content = card.querySelector('.collapse-content');
+                                    const toggleBtn = card.querySelector('.toggle-btn i');
+                                    if (content && toggleBtn) {
+                                        content.classList.remove('hidden');
+                                        toggleBtn.className = 'fa fa-chevron-down';
+                                    }
+                                }
+                            });
+                        }, 100);
                         
                         // 更新数据看板
                         updateDashboard();
@@ -14486,15 +14693,28 @@ ${shopsMap[link.shopId]}
             // 点击清空回收站
             emptyRecycleBinBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                if (recycleBin.length > 0) {
-                    if (confirm('确定要清空回收站吗？此操作不可撤销。')) {
-                        recycleBin = [];
-                        localStorage.setItem('recycleBin', JSON.stringify(recycleBin));
-                        updateRecycleBinCount();
-                        renderRecycleBin();
-                        showToast('成功', '回收站已清空', 'success');
-                    }
+                if (recycleBin.length === 0) {
+                    showToast('提示', '回收站为空', 'info');
+                    return;
                 }
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.remove('hidden');
+            });
+            
+            // 取消清空回收站
+            document.getElementById('cancel-empty-recycle-bin').addEventListener('click', function() {
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.add('hidden');
+            });
+            
+            // 确认清空回收站
+            document.getElementById('confirm-empty-recycle-bin').addEventListener('click', function() {
+                // 清空回收站
+                recycleBin = [];
+                localStorage.setItem('recycleBin', JSON.stringify(recycleBin));
+                updateRecycleBinCount();
+                renderRecycleBin();
+                
+                showToast('成功', '回收站已清空', 'success');
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.add('hidden');
             });
             
             // 点击其他地方隐藏回收站列表
@@ -16035,15 +16255,28 @@ ${shopsMap[link.shopId]}
             // 点击清空回收站
             emptyRecycleBinBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                if (recycleBin.length > 0) {
-                    if (confirm('确定要清空回收站吗？此操作不可撤销。')) {
-                        recycleBin = [];
-                        localStorage.setItem('recycleBin', JSON.stringify(recycleBin));
-                        updateRecycleBinCount();
-                        renderRecycleBin();
-                        showToast('成功', '回收站已清空', 'success');
-                    }
+                if (recycleBin.length === 0) {
+                    showToast('提示', '回收站为空', 'info');
+                    return;
                 }
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.remove('hidden');
+            });
+            
+            // 取消清空回收站
+            document.getElementById('cancel-empty-recycle-bin').addEventListener('click', function() {
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.add('hidden');
+            });
+            
+            // 确认清空回收站
+            document.getElementById('confirm-empty-recycle-bin').addEventListener('click', function() {
+                // 清空回收站
+                recycleBin = [];
+                localStorage.setItem('recycleBin', JSON.stringify(recycleBin));
+                updateRecycleBinCount();
+                renderRecycleBin();
+                
+                showToast('成功', '回收站已清空', 'success');
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.add('hidden');
             });
             
             // 点击其他地方隐藏回收站列表
@@ -16753,15 +16986,28 @@ ${shopsMap[link.shopId]}
             // 点击清空回收站
             emptyRecycleBinBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                if (recycleBin.length > 0) {
-                    if (confirm('确定要清空回收站吗？此操作不可撤销。')) {
-                        recycleBin = [];
-                        localStorage.setItem('recycleBin', JSON.stringify(recycleBin));
-                        updateRecycleBinCount();
-                        renderRecycleBin();
-                        showToast('成功', '回收站已清空', 'success');
-                    }
+                if (recycleBin.length === 0) {
+                    showToast('提示', '回收站为空', 'info');
+                    return;
                 }
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.remove('hidden');
+            });
+            
+            // 取消清空回收站
+            document.getElementById('cancel-empty-recycle-bin').addEventListener('click', function() {
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.add('hidden');
+            });
+            
+            // 确认清空回收站
+            document.getElementById('confirm-empty-recycle-bin').addEventListener('click', function() {
+                // 清空回收站
+                recycleBin = [];
+                localStorage.setItem('recycleBin', JSON.stringify(recycleBin));
+                updateRecycleBinCount();
+                renderRecycleBin();
+                
+                showToast('成功', '回收站已清空', 'success');
+                document.getElementById('confirm-empty-recycle-bin-modal').classList.add('hidden');
             });
             
             // 点击其他地方隐藏回收站列表
