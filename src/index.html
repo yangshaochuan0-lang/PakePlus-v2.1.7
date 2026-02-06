@@ -22119,7 +22119,7 @@ ${shopsMap[link.shopId]}
                                     <p class="text-xs text-gray-500">供应商: ${detail.supplier || '-'} | 编码: ${detail.code || '-'}</p>
                                 </div>
                                 <div class="text-right">
-                                    <p class="text-sm font-semibold text-gray-800 ${isEditPayment ? 'editing-breathing-bg' : ''}">¥${displayAmount.toFixed(2)}</p>
+                                    <p class="text-sm font-semibold text-gray-800">¥${displayAmount.toFixed(2)}</p>
                                     <p class="text-xs text-gray-500">
                                         已付: ¥${parseFloat(detail.newPaid || detail.paidAmount || 0).toFixed(2)} / 
                                         待付: ¥${(parseFloat(detail.totalPrice || detail.total || 0) - parseFloat(detail.newPaid || detail.paidAmount || 0)).toFixed(2)} /
